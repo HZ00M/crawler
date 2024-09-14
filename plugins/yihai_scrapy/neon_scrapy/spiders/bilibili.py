@@ -31,7 +31,8 @@ class BilibiliSpider(RedisSpider):
     # ---4 设置redis-key
     redis_key = "bilibili_key"
 
-    def __init__(self, keyword="", execute_id=0, execute_name="", start_time=0, end_time=0, *args, **kwargs):
+    def __init__(self, keyword="", execute_id=0, execute_name="", igore_word="", start_time=0, end_time=0, *args,
+                 **kwargs):
         domain = kwargs.pop('domain', '')
         self.allowed_domains = list(filter(None, domain.split(',')))
         super(BilibiliSpider, self).__init__(*args, **kwargs)
@@ -39,9 +40,10 @@ class BilibiliSpider(RedisSpider):
         # super().__init__(**kwargs)
         temp = cookies
         self.cookies = {data.split('=')[0]: data.split('=')[1] for data in temp.split('; ')}
-        self.keyword = keyword
+        self.key_word = keyword
         self.execute_id = execute_id
         self.execute_name = execute_name
+        self.igore_word = igore_word
         if start_time:
             self.start_time = start_time
         else:
