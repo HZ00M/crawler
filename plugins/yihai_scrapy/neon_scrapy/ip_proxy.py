@@ -40,13 +40,15 @@ class IpProxy:
         print(f"get_secret_token success, data: {json_data}")
         # 使用secret_token直接当签名
         IpProxy.secret_token = json_data["data"]["secret_token"]
-        IpProxy.expire = json_data["data"]["expire"]
+        not_time = int(time.time())
+        IpProxy.expire = json_data["data"]["expire"] + not_time
 
     # 调用api拉取ip
     @staticmethod
     def get_dps(num):
         # 如果签名过期时间小于五分钟，重新去拉取，更新一下签名
-        if IpProxy.expire < 300:
+        now_time = int(time.time())
+        if IpProxy.expire - now_time < 300:
             IpProxy.get_signature()
         url = f"https://dps.kdlapi.com/api/getdps?secret_id={IpProxy.secret_id}&num={num}&signature={IpProxy.secret_token}&format=json"
         result = requests.get(url=url)
@@ -66,9 +68,11 @@ class IpProxy:
     @staticmethod
     def get_dps_valid_time(proxy):
         # 如果签名过期时间小于五分钟，重新去拉取，更新一下签名
-        if IpProxy.expire < 300:
+        now_time = int(time.time())
+        if IpProxy.expire -now_time < 300:
             IpProxy.get_signature()
         now_time = time.time()
+        # 如果等于0，代表没获取过时间，获取一下
         if IpProxy.proxy_list[proxy] == 0:
             url = f"https://dps.kdlapi.com/api/getdpsvalidtime?secret_id={IpProxy.secret_id}&signature={IpProxy.secret_token}&proxy={proxy}"
             result = requests.get(url=url)
@@ -87,7 +91,8 @@ class IpProxy:
 
     # 获取订单ip剩余余额
     def get_ip_balance(self):
-        if IpProxy.expire < 300:
+        now_time = int(time.time())
+        if IpProxy.expire -now_time < 300:
             IpProxy.get_signature()
         # 暂时不需要，先预留
         url = f"https://dps.kdlapi.com/api/getipbalance?secret_id={IpProxy.secret_id}&signature={IpProxy.secret_token}"
@@ -116,7 +121,7 @@ class IpProxy:
                 print(f"get {proxy} valid time error")
                 return proxy
             elif ip_expire <= 30:
-                IpProxy.proxy_list.remove(proxy)
+                IpProxy.proxy_list.pop(proxy)
             else:
                 print(f"proxy: {proxy}")
                 break
@@ -126,7 +131,7 @@ class IpProxy:
     def del_proxy(proxy):
         proxy = proxy.split("http://")[-1]
         if proxy in IpProxy.proxy_list:
-            IpProxy.proxy_list.remove(proxy)
+            IpProxy.proxy_list.pop(proxy)
         else:
             print(f"{proxy} not in proxy_list")
 
