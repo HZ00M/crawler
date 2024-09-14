@@ -11,7 +11,8 @@ type JobMeta struct {
 	ImageName  string `json:"image_name"`
 	Command    string `json:"command"`
 	Namespace  string
-	Args       string
+	EnvArgs    string
+	ExeArgs    string
 	PluginPath string
 }
 

@@ -137,9 +137,9 @@ func (s *JobRecordService) CreateJobExecute(params map[string]interface{}) error
 	beginTimestamp := begin.Unix()
 	endTimestamp := end.Unix()
 	var args = fmt.Sprintf("--execute_id=%d	--execute_name=%s	key_word=%s	igore_word=%s	begin_time=%d	end_time=%d	%s",
-		newExecute.ID, req.ExecuteName, req.KeyWord, req.IgoreWord, beginTimestamp, endTimestamp, jobMeta.Args)
+		newExecute.ID, req.ExecuteName, req.KeyWord, req.IgoreWord, beginTimestamp, endTimestamp, jobMeta.ExeArgs)
 	logging.Info("args %s", args)
-	newExecute.Args = args
+	newExecute.ExeArgs = args
 	if err := s.repo.EditJobExecute(newExecute); err != nil {
 		panic(fmt.Sprintf("Error EditJobExecute fail id %v: %v", req.MetaId, err))
 	}
@@ -221,7 +221,7 @@ func buildDeployConf(jobExecute entity.JobExecute) (*deploy.DeployJobConf, error
 		AppName:   jobExecute.AppLableName,
 		JobName:   jobExecute.JobLableName,
 		Command:   jobExecute.Command,
-		Args:      jobExecute.Args,
+		Args:      jobExecute.ExeArgs,
 		Cron:      jobExecute.Cron,
 		Parallel:  jobExecute.ParallelNum,
 	}

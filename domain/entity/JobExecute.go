@@ -43,7 +43,8 @@ type JobExecute struct {
 	Namespace       string `gorm:"type:varchar(255)"`
 	Image           string `gorm:"type:varchar(255)"`
 	Command         string `gorm:"type:varchar(255)"`
-	Args            string `gorm:"type:varchar(255)"`
+	ExeArgs         string `gorm:"type:varchar(255)"`
+	EnvArgs         string `gorm:"type:varchar(255)"`
 	Cron            string `gorm:"type:varchar(255)"`
 	ResultTableName string `gorm:"type:varchar(255);default:'t_job_record'"  json:"result_table_name"`
 	DataSize        int    `json:"data_size"`
@@ -61,11 +62,11 @@ func (JobExecute) TableName() string {
 }
 
 func (execute *JobExecute) AppendArg(key, value string) {
-	execute.Args = execute.Args + "	--" + key + "=" + value
+	execute.ExeArgs = execute.ExeArgs + "	--" + key + "=" + value
 }
 
 func (execute *JobExecute) AppendExtraArg(key, value string) {
-	execute.Args = execute.Args + "	" + key + "=" + value
+	execute.ExeArgs = execute.ExeArgs + "	" + key + "=" + value
 }
 
 func (execute *JobExecute) UpdateStatus(status JobStatus) {
