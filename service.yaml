@@ -1,0 +1,26 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: crawler-for-client
+  namespace: yh-crawler
+spec:
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8000
+  selector:
+    app: crawler
+  type: LoadBalancer
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: crawler
+  namespace: yh-crawler
+spec:
+  ports:
+    - protocol: TCP
+      port: 8000
+      targetPort: 8000
+  selector:
+    app: crawler

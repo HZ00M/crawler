@@ -1,0 +1,89 @@
+# github.com/go-ini/ini v1.32.1-0.20180214101753-32e4be5f41bb
+## explicit
+github.com/go-ini/ini
+# github.com/jackc/pgpassfile v1.0.0
+## explicit; go 1.12
+github.com/jackc/pgpassfile
+# github.com/jackc/pgservicefile v0.0.0-20221227161230-091c0ba34f0a
+## explicit; go 1.14
+github.com/jackc/pgservicefile
+# github.com/jackc/pgx/v5 v5.5.5
+## explicit; go 1.19
+github.com/jackc/pgx/v5
+github.com/jackc/pgx/v5/internal/anynil
+github.com/jackc/pgx/v5/internal/iobufpool
+github.com/jackc/pgx/v5/internal/pgio
+github.com/jackc/pgx/v5/internal/sanitize
+github.com/jackc/pgx/v5/internal/stmtcache
+github.com/jackc/pgx/v5/pgconn
+github.com/jackc/pgx/v5/pgconn/internal/bgreader
+github.com/jackc/pgx/v5/pgconn/internal/ctxwatch
+github.com/jackc/pgx/v5/pgproto3
+github.com/jackc/pgx/v5/pgtype
+github.com/jackc/pgx/v5/pgxpool
+github.com/jackc/pgx/v5/stdlib
+# github.com/jackc/puddle/v2 v2.2.1
+## explicit; go 1.19
+github.com/jackc/puddle/v2
+github.com/jackc/puddle/v2/internal/genstack
+# github.com/jinzhu/inflection v1.0.0
+## explicit
+github.com/jinzhu/inflection
+# github.com/jinzhu/now v1.1.5
+## explicit; go 1.12
+github.com/jinzhu/now
+# github.com/smartystreets/goconvey v1.8.1
+## explicit; go 1.18
+# github.com/stretchr/testify v1.9.0
+## explicit; go 1.17
+# go.uber.org/dig v1.17.1
+## explicit; go 1.20
+go.uber.org/dig
+go.uber.org/dig/internal/digerror
+go.uber.org/dig/internal/digreflect
+go.uber.org/dig/internal/dot
+go.uber.org/dig/internal/graph
+# golang.org/x/crypto v0.26.0
+## explicit; go 1.20
+golang.org/x/crypto/pbkdf2
+# golang.org/x/sync v0.8.0
+## explicit; go 1.18
+golang.org/x/sync/semaphore
+# golang.org/x/text v0.17.0
+## explicit; go 1.18
+golang.org/x/text/cases
+golang.org/x/text/internal
+golang.org/x/text/internal/language
+golang.org/x/text/internal/language/compact
+golang.org/x/text/internal/tag
+golang.org/x/text/language
+golang.org/x/text/runes
+golang.org/x/text/secure/bidirule
+golang.org/x/text/secure/precis
+golang.org/x/text/transform
+golang.org/x/text/unicode/bidi
+golang.org/x/text/unicode/norm
+golang.org/x/text/width
+# gorm.io/driver/postgres v1.5.9
+## explicit; go 1.19
+gorm.io/driver/postgres
+# gorm.io/gorm v1.25.11
+## explicit; go 1.18
+gorm.io/gorm
+gorm.io/gorm/callbacks
+gorm.io/gorm/clause
+gorm.io/gorm/logger
+gorm.io/gorm/migrator
+gorm.io/gorm/schema
+gorm.io/gorm/utils
+# syyx.com/crawler v0.0.0-00010101000000-000000000000 => ../../
+## explicit; go 1.22.5
+syyx.com/crawler/domain/entity
+syyx.com/crawler/domain/repository
+syyx.com/crawler/infrast/persistence
+syyx.com/crawler/pkg/di
+syyx.com/crawler/pkg/file
+syyx.com/crawler/pkg/gormdb
+syyx.com/crawler/pkg/logging
+syyx.com/crawler/pkg/setting
+# syyx.com/crawler => ../../

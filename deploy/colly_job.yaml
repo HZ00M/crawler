@@ -1,0 +1,27 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: xxx-name
+  namespace: xxx-namespace
+  labels:
+    app: crawler
+spec:
+  completions: 1      # 需要完成的 Pod 数量
+  parallelism: 1      # 并发运行的 Pod 数量
+  ttlSecondsAfterFinished: 86400  # Job 完成后保留1小时
+  completionMode: Indexed  # 开启 Indexed Job 模式
+  backoffLimit: 4
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: xxx-container
+        image: xxx-image # 替换为你的 Docker 镜像
+        imagePullPolicy: IfNotPresent
+        command: ["./your-go-executable"] # 替换为你的 Go 可执行文件
+        args: ["arg1", "arg2"] # 替换为你的命令行参数，如果有的话
+        env:
+        - name: JOB_COMPLETION_INDEX
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.annotations['batch.kubernetes.io/job-completion-index']

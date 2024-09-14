@@ -1,0 +1,34 @@
+# 忽略所有编译生成的二进制文件
+*.exe
+*.dll
+*.so
+*.dylib
+*.out
+*.o
+*.a
+# 忽略 Go 的测试文件
+*_test.go
+# 忽略测试结果
+coverage.out
+# 忽略文档文件
+*.md
+LICENSE
+# 忽略 Node.js 的包管理文件
+node_modules
+npm-debug.log
+yarn-error.log
+# 忽略 Go 的本地缓存目录
+vendor
+# 忽略 Git 目录
+.git
+.gitignore
+# 忽略 macOS 生成的文件
+.DS_Store
+# 忽略 VSCode 配置文件
+.vscode/
+# 忽略 JetBrains 系列 IDE 生成的文件
+.idea/
+# 忽略环境变量文件
+.env
+# 忽略依赖缓存
+*.cache
