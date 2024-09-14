@@ -38,8 +38,14 @@ class mysqlPipeline:
         # 把对象转换成字典，并将字典序列化
         now_time = time.time()
         item["take_time"] = int(now_time)
+        # 启动传过来的几个参数
         if spider.key_word:
-            print(spider.key_word+"--------------------------")
+            item["key_word"] = spider.key_word
+        if spider.execute_id:
+            item["execute_id"] = spider.execute_id
+        if spider.execute_name:
+            item["execute_name"] = spider.execute_name
+        item["web_site"] = spider.name
         item = dict(item)
         # name = spider.name
         name = "t_job_record"

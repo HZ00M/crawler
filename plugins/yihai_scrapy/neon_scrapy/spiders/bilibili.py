@@ -480,6 +480,8 @@ class BilibiliSpider(RedisSpider):
         item["user_describe"] = data["card"]["sign"]
         # 用户会员
         item["user_member"] = data["card"]["vip"]["label"]["text"]
+        # 用户主页uirl
+        item["user_homepage"] = "https://space.bilibili.com/" + item["user_id"]
         yield item
 
     # 获取子评论内容
