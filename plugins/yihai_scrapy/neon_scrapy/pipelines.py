@@ -37,9 +37,12 @@ class mysqlPipeline:
     def process_item(self, item, spider):
         # 把对象转换成字典，并将字典序列化
         now_time = time.time()
-        item["抓取时间"] = int(now_time)
+        item["take_time"] = int(now_time)
+        if spider.keyword:
+            print(spider.keyword+"--------------------------")
         item = dict(item)
-        name = spider.name
+        # name = spider.name
+        name = "t_job_record"
         self.scaapy_sql.insert(name, item)
         return item
 

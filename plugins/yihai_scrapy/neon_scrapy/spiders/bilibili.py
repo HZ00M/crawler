@@ -31,7 +31,7 @@ class BilibiliSpider(RedisSpider):
     # ---4 设置redis-key
     redis_key = "bilibili_key"
 
-    def __init__(self, keyword="", days_ago=7, start_time=0, end_time=0, *args, **kwargs):
+    def __init__(self, keyword="", execute_id=0, execute_name="", start_time=0, end_time=0, *args, **kwargs):
         domain = kwargs.pop('domain', '')
         self.allowed_domains = list(filter(None, domain.split(',')))
         super(BilibiliSpider, self).__init__(*args, **kwargs)
@@ -39,12 +39,13 @@ class BilibiliSpider(RedisSpider):
         # super().__init__(**kwargs)
         temp = cookies
         self.cookies = {data.split('=')[0]: data.split('=')[1] for data in temp.split('; ')}
-        # self.run_time = int(time.time())
-        # self.days_ago = days_ago
+        self.keyword = keyword
+        self.execute_id = execute_id
+        self.execute_name = execute_name
         if start_time:
             self.start_time = start_time
         else:
-            self.start_time = int(time.time()) - 86400*3
+            self.start_time = int(time.time()) - 86400 * 3
         if end_time:
             self.end_time = end_time
         else:
@@ -128,10 +129,10 @@ class BilibiliSpider(RedisSpider):
                 item_list = []
                 for item in item_lists:
                     video_item = NeonScrapyItem()
-                    video_item['标题'] = item.xpath(Page.video_title).extract_first()
-                    video_item['视频详情'] = "https:" + item.xpath(Page.video_details).extract_first()
+                    video_item['title'] = item.xpath(Page.video_title).extract_first()
+                    video_item['record_ur'] = "https:" + item.xpath(Page.video_details).extract_first()
                     item_list.append(video_item)
-                yield scrapy.Request(url=item_list[0]['视频详情'], callback=self.get_video_details,
+                yield scrapy.Request(url=item_list[0]['record_ur'], callback=self.get_video_details,
                                      meta={'video_item': item_list[0], "item_list": item_list, "item_index": 1,
                                            'url_info': url_info},
                                      # cookies=self.cookies,
@@ -149,10 +150,10 @@ class BilibiliSpider(RedisSpider):
                 for article_id in article_list:
                     article_item = NeonScrapyItem()
                     url = f"https://www.bilibili.com/read/cv{article_id}/?from=search&spm_id_from=333.337.0.0"
-                    article_item["视频详情"] = url
-                    article_item["视频id"] = article_id
+                    article_item["record_ur"] = url
+                    article_item["target_obj_id"] = article_id
                     item_list.append(article_item)
-                yield scrapy.Request(url=item_list[0]['视频详情'], callback=self.get_article_details,
+                yield scrapy.Request(url=item_list[0]['record_ur'], callback=self.get_article_details,
                                      meta={'article_item': item_list[0], "item_list": item_list, "item_index": 1,
                                            'url_info': url_info},
                                      # cookies=self.cookies,
@@ -178,21 +179,21 @@ class BilibiliSpider(RedisSpider):
                 print("get biliGame comment error")
                 return
             biliGame_item = NeonScrapyItem()
-            biliGame_item["类型"] = "游戏中心"
+            biliGame_item["data_type"] = "游戏中心"
             # 视频id
-            biliGame_item["视频id"] = config["gameId"]
+            biliGame_item["target_obj_id"] = config["gameId"]
             # 游戏简介
-            biliGame_item["视频简介"] = resp_json["data"]["desc"]
+            biliGame_item["content"] = resp_json["data"]["desc"]
             # 游戏标签
-            biliGame_item["标题"] = resp_json["data"]["title"]
+            biliGame_item["title"] = resp_json["data"]["title"]
             # 开发者的话
-            biliGame_item["开发者语录"] = resp_json["data"]["dev_introduction"]
+            biliGame_item["developer_word"] = resp_json["data"]["dev_introduction"]
             # 安卓最近更新
-            biliGame_item["安卓最近更新"] = resp_json["data"]["android_latest_update"]
+            biliGame_item["android_last_update"] = resp_json["data"]["android_latest_update"]
             # ios最近更新
-            biliGame_item["ios最近更新"] = resp_json["data"]["ios_latest_update"]
+            biliGame_item["ios_last_update"] = resp_json["data"]["ios_latest_update"]
             # 标签
-            biliGame_item["标签"] = [tag["name"] for tag in resp_json["data"]["tag_list"]]
+            biliGame_item["tag"] = [tag["name"] for tag in resp_json["data"]["tag_list"]]
             print("详情信息拿完，去拿评论数量和评分")
             url = url_config["biliGame"]["summary_page"]
             request_id = Util.generate_random_string()
@@ -218,12 +219,12 @@ class BilibiliSpider(RedisSpider):
         item_list = response.meta["item_list"]
         item_index = response.meta["item_index"]
         url_info = response.meta["url_info"]
-        video_item['类型'] = "视频"
+        video_item['data_type'] = "视频"
         # 视频发布时间
-        video_item['发布时间'] = response.xpath(Page.posted_time).extract_first()
+        video_item['msg_time'] = response.xpath(Page.posted_time).extract_first()
         # 如果发布时间不满足筛选需要，结束
         # 转换为 datetime 对象
-        dt = datetime.strptime(video_item['发布时间'], "%Y-%m-%d %H:%M:%S")
+        dt = datetime.strptime(video_item['msg_time'], "%Y-%m-%d %H:%M:%S")
         # 转换为时间戳
         timestamp = int(time.mktime(dt.timetuple()))
         # if not self.check_time(timestamp):
@@ -234,7 +235,7 @@ class BilibiliSpider(RedisSpider):
         if len(item_list) > item_index:
             print("next video")
             next_video_item = item_list[item_index]
-            yield scrapy.Request(url=next_video_item['视频详情'], callback=self.get_video_details,
+            yield scrapy.Request(url=next_video_item['record_ur'], callback=self.get_video_details,
                                  meta={'video_item': next_video_item, "item_list": item_list, 'url_info': url_info,
                                        "item_index": item_index + 1},
                                  # cookies=self.cookies,
@@ -256,34 +257,36 @@ class BilibiliSpider(RedisSpider):
         # 视频发布人名字
         name = response.xpath(Page.up_name).extract_first()
         # 去掉默认的换行符，空字符
-        video_item['发布人名字'] = name.replace('\n', '').replace(' ', '')
+        video_item['author'] = name.replace('\n', '').replace(' ', '')
         up_id = response.xpath(Page.up_id).extract_first()
-        video_item['用户id'] = re.findall(r'(\d+)', up_id)[0]
+        video_item['user_id'] = re.findall(r'(\d+)', up_id)[0]
         # 视频简介
-        video_item['视频简介'] = response.xpath(Page.video_introduction).extract_first()
+        video_item['content'] = response.xpath(Page.video_introduction).extract_first()
         # 视频标签
         # 过滤掉空节点（视频话题，或者音乐该节点为空）
-        video_item['标签'] = response.xpath(Page.video_tag).extract()
+        video_item['tag'] = response.xpath(Page.video_tag).extract()
         # 视频话题
-        video_item['视频话题'] = response.xpath(Page.video_topic).extract()
+        video_item['subject'] = response.xpath(Page.video_topic).extract()
         # 视频评论数
-        video_item['评论数'] = response.xpath(Page.video_comment_num).extract_first()
+        video_item['comments_count'] = response.xpath(Page.video_comment_num).extract_first()
         # 视频三连数量定位
         video_info = response.xpath(Page.video_heat).extract_first()
         # video_info = video_info.split("尽在哔哩哔哩bilibili ")[-1].split(", 视频作者")[0] # 这种有时候取不到，可能是有些视频违规，不能分享，所以分享信息里没有关键字
         video_info = "视频播放量 " + video_info.split("视频播放量 ")[-1].split(", 视频作者")[0]
         info_list = video_info.split("、")
         # 视频播放量/弹幕量/点赞数/投币数/收藏人数/转发人数
+        video_config = {"视频播放量": "read_count", "弹幕量": "barrage_count", "点赞数": "like_count",
+                        "投硬币枚数": "coin_count", "收藏人数": "mark_count", "转发人数": "share_count"}
         for info in info_list:
             key, value = info.split(" ")
-            video_item[key] = value
+            video_item[video_config[key]] = value
         # 主界面的内容抓完，开始构造评论的抓取
         # 正则获取视频唯一标识oid，后续获取评论要用
         matches = re.findall(r'oid=(\d+)', response.text)
         if matches:
             oid = matches[0]
-            video_item["视频id"] = oid
-            url = f"https://api.bilibili.com/x/web-interface/card?mid={video_item['用户id']}&photo=true&web_location=333.788"
+            video_item["target_obj_id"] = oid
+            url = f"https://api.bilibili.com/x/web-interface/card?mid={video_item['user_id']}&photo=true&web_location=333.788"
             yield scrapy.Request(url=url, callback=self.get_user_card, meta={'item': video_item},
                                  dont_filter=True)
             # yield video_item
@@ -434,24 +437,24 @@ class BilibiliSpider(RedisSpider):
         print("----------拿评论ing-----------")
         comment_item = NeonScrapyItem()
         # 类型是评论
-        comment_item["类型"] = reply_type
+        comment_item["data_type"] = reply_type
         # 类型是评论
-        comment_item["视频id"] = oid
+        comment_item["target_obj_id"] = oid
         # 评论内容
-        comment_item["评论"] = comment["content"]["message"]
+        comment_item[comment] = comment["content"]["message"]
         # 评论人
-        comment_item["评论人"] = comment["member"]["uname"]
+        comment_item["commenter_name"] = comment["member"]["uname"]
         # 评论点赞量
-        comment_item["评论点赞量"] = comment["like"]
+        comment_item["like_count"] = comment["like"]
         # 评论回复量
-        comment_item["评论回复量"] = comment["rcount"]
+        comment_item["comment_reply_num"] = comment["rcount"]
         # 评论时间
-        comment_item["评论时间"] = comment["ctime"]
+        comment_item["comment_time"] = comment["ctime"]
         # 去主页拿评论人的信息
         # 评论人mid
-        comment_item["用户id"] = comment["member"]["mid"]
+        comment_item["user_id"] = comment["member"]["mid"]
         print("去拿用户信息")
-        url = f"https://api.bilibili.com/x/web-interface/card?mid={comment_item['用户id']}&photo=true&web_location=333.788"
+        url = f"https://api.bilibili.com/x/web-interface/card?mid={comment_item['user_id']}&photo=true&web_location=333.788"
         return scrapy.Request(url=url, callback=self.get_user_card, meta={'item': comment_item},
                               dont_filter=True)
 
@@ -464,17 +467,17 @@ class BilibiliSpider(RedisSpider):
             return
         data = resp_json["data"]
         # 用户等级
-        item["用户等级"] = data["card"]["level_info"]["current_level"]
+        item["user_level"] = data["card"]["level_info"]["current_level"]
         # 用户粉丝数
-        item["用户粉丝数"] = data["card"]["fans"]
+        item["fans_count"] = data["card"]["fans"]
         # 用户关注数
-        item["用户关注数"] = data["card"]["friend"]
+        item["interest_count"] = data["card"]["friend"]
         # 用户获赞数
-        item["用户获赞数"] = data["like_num"]
+        item["user_likes"] = data["like_num"]
         # 用户简介
-        item["用户简介"] = data["card"]["sign"]
+        item["user_describe"] = data["card"]["sign"]
         # 用户会员
-        item["用户会员"] = data["card"]["vip"]["label"]["text"]
+        item["user_member"] = data["card"]["vip"]["label"]["text"]
         yield item
 
     # 获取子评论内容
@@ -495,22 +498,23 @@ class BilibiliSpider(RedisSpider):
         item_index = response.meta["item_index"]
         url_info = response.meta["url_info"]
         # 数据类型
-        article_item["类型"] = "专栏"
+        article_item["data_type"] = "专栏"
         # 专栏的所有信息字符串
         article_html_info = response.xpath(Page.article_html_info).extract_first()
         article_html_json = re.findall(r"window.__INITIAL_STATE__=(.*);\(function\(\)", article_html_info)
         if article_html_json:
             article_html_json = json.loads(article_html_json[0])
             # 专栏发布时间
-            article_item["发布时间"] = article_html_json["readInfo"]["publish_time"]
-            if not self.check_time(int(article_item["发布时间"])):
-                print(f"发布时间：{article_item['发布时间']} out of range start_time:{self.start_time},end_time:{self.end_time}")
+            article_item["msg_time"] = article_html_json["readInfo"]["publish_time"]
+            if not self.check_time(int(article_item["msg_time"])):
+                print(
+                    f"发布时间：{article_item['msg_time']} out of range start_time:{self.start_time},end_time:{self.end_time}")
                 return
                 # 发布时间满足筛选需求，就继续去遍历下一个专栏
             if len(item_list) > item_index:
                 print("next article")
                 next_video_item = item_list[item_index]
-                yield scrapy.Request(url=next_video_item['视频详情'], callback=self.get_article_details,
+                yield scrapy.Request(url=next_video_item['record_ur'], callback=self.get_article_details,
                                      meta={'article_item': next_video_item, "item_list": item_list,
                                            'url_info': url_info,
                                            "item_index": item_index + 1},
@@ -528,28 +532,28 @@ class BilibiliSpider(RedisSpider):
                                      )
 
             # 专栏标题
-            article_item["标题"] = article_html_json["readInfo"]["title"]
+            article_item["data_type"] = article_html_json["readInfo"]["title"]
             # 专栏发布人
-            article_item["发布人名字"] = article_html_json["readInfo"]["author"]["name"]
+            article_item["author"] = article_html_json["readInfo"]["author"]["name"]
             # 专栏浏览量
-            article_item["视频播放量"] = article_html_json["readInfo"]["stats"]["view"]
+            article_item["read_count"] = article_html_json["readInfo"]["stats"]["view"]
             # 专栏点赞量
-            article_item["点赞数"] = article_html_json["readInfo"]["stats"]["like"]
+            article_item["like_count"] = article_html_json["readInfo"]["stats"]["like"]
             # 专栏评论量
-            article_item["评论数"] = article_html_json["readInfo"]["stats"]["reply"]
+            article_item["comments_count"] = article_html_json["readInfo"]["stats"]["reply"]
             # 专栏收藏量
-            article_item["收藏人数"] = article_html_json["readInfo"]["stats"]["favorite"]
+            article_item["mark_count"] = article_html_json["readInfo"]["stats"]["favorite"]
             # 专栏投币量
-            article_item["投硬币枚数"] = article_html_json["readInfo"]["stats"]["coin"]
+            article_item["coin_count"] = article_html_json["readInfo"]["stats"]["coin"]
             # 专栏转发人数
-            article_item["转发人数"] = article_html_json["readInfo"]["stats"]["share"]
+            article_item["share_count"] = article_html_json["readInfo"]["stats"]["share"]
             # 专栏标签
             if "tags" in article_html_json["readInfo"]:
                 tag_list = article_html_json["readInfo"]["tags"]
-                article_item["标签"] = [item["name"] for item in tag_list]
+                article_item["tag"] = [item["name"] for item in tag_list]
             # 专栏up主用户id
-            article_item["用户id"] = article_html_json["readInfo"]["author"]["mid"]
-            url = f"https://api.bilibili.com/x/web-interface/card?mid={article_item['用户id']}&photo=true&web_location=333.788"
+            article_item["user_id"] = article_html_json["readInfo"]["author"]["mid"]
+            url = f"https://api.bilibili.com/x/web-interface/card?mid={article_item['user_id']}&photo=true&web_location=333.788"
             yield scrapy.Request(url=url, callback=self.get_user_card, meta={'item': article_item},
                                  dont_filter=True)
             print("专栏界面基础信息拿完，开始拿评论")
@@ -603,14 +607,15 @@ class BilibiliSpider(RedisSpider):
         for dynamic_info in resp_json["data"]["items"]:
             dynamic_item = self.get_dynamic_details(dynamic_info, url_info["UID"])
             # 如果不满足条件，直接就结束循环
-            if not self.check_time(int(dynamic_item["发布时间"])):
-                print(f"发布时间：{dynamic_item['发布时间']} out of range start_time:{self.start_time},end_time:{self.end_time}")
+            if not self.check_time(int(dynamic_item["msg_time"])):
+                print(
+                    f"发布时间：{dynamic_item['msg_time']} out of range start_time:{self.start_time},end_time:{self.end_time}")
                 return
-            url = f"https://api.bilibili.com/x/web-interface/card?mid={dynamic_item['用户id']}&photo=true&web_location=333.788"
+            url = f"https://api.bilibili.com/x/web-interface/card?mid={dynamic_item['user_id']}&photo=true&web_location=333.788"
             yield scrapy.Request(url=url, callback=self.get_user_card, meta={'item': dynamic_item},
                                  dont_filter=True)
             print("开始抓评论")
-            oid = dynamic_item["视频id"]
+            oid = dynamic_item["target_obj_id"]
             dynamic_type = dynamic_info["basic"]["comment_type"]
             first_page_pagination_str = {"offset": ""}
             pagination_str = Util.pagination_str(first_page_pagination_str)
@@ -651,44 +656,44 @@ class BilibiliSpider(RedisSpider):
         dynamic_item = NeonScrapyItem()
         url = url_config["dynamic"]["detail_page"].format(id=dynamic_info["id_str"])
         # 数据地址
-        dynamic_item["视频详情"] = url
-        dynamic_item["视频id"] = dynamic_info["basic"]["comment_id_str"]
+        dynamic_item["record_ur"] = url
+        dynamic_item["target_obj_id"] = dynamic_info["basic"]["comment_id_str"]
         # 数据类型
-        dynamic_item["类型"] = "动态"
+        dynamic_item["data_type"] = "动态"
         # 动态发布时间
-        dynamic_item["发布时间"] = dynamic_info["modules"]["module_author"]["pub_ts"]
+        dynamic_item["msg_time"] = dynamic_info["modules"]["module_author"]["pub_ts"]
         # 动态标题,根据动态类型，从不同路径下拿标题
         # todo 这里可能会报错，有问题后面再优化，规则有点绕
         # 标题和正文内容
         if dynamic_info["modules"]["module_dynamic"]["major"]:
             if "archive" in dynamic_info["modules"]["module_dynamic"]["major"]:
-                dynamic_item["标题"] = dynamic_info["modules"]["module_dynamic"]["major"]["archive"]["title"]
-                dynamic_item["视频简介"] = dynamic_info["modules"]["module_dynamic"]["major"]["archive"]["desc"]
+                dynamic_item["data_type"] = dynamic_info["modules"]["module_dynamic"]["major"]["archive"]["title"]
+                dynamic_item["content"] = dynamic_info["modules"]["module_dynamic"]["major"]["archive"]["desc"]
             elif "article" in dynamic_info["modules"]["module_dynamic"]["major"]:
-                dynamic_item["标题"] = dynamic_info["modules"]["module_dynamic"]["major"]["article"]["title"]
-                dynamic_item["视频简介"] = dynamic_info["modules"]["module_dynamic"]["major"]["article"]["desc"]
+                dynamic_item["data_type"] = dynamic_info["modules"]["module_dynamic"]["major"]["article"]["title"]
+                dynamic_item["content"] = dynamic_info["modules"]["module_dynamic"]["major"]["article"]["desc"]
             elif "opus" in dynamic_info["modules"]["module_dynamic"]["major"]:
-                dynamic_item["标题"] = dynamic_info["modules"]["module_dynamic"]["major"]["opus"]["title"]
-                dynamic_item["视频简介"] = dynamic_info["modules"]["module_dynamic"]["major"]["opus"]["summary"]["desc"]
+                dynamic_item["data_type"] = dynamic_info["modules"]["module_dynamic"]["major"]["opus"]["title"]
+                dynamic_item["content"] = dynamic_info["modules"]["module_dynamic"]["major"]["opus"]["summary"]["desc"]
             else:
-                dynamic_item["标题"] = ""
-                dynamic_item["视频简介"] = ""
+                dynamic_item["data_type"] = ""
+                dynamic_item["content"] = ""
         elif dynamic_info["modules"]["module_dynamic"]["desc"]:
-            dynamic_item["视频简介"] = dynamic_info["modules"]["module_dynamic"]["desc"]["text"]
-            dynamic_item["标题"] = ""
+            dynamic_item["content"] = dynamic_info["modules"]["module_dynamic"]["desc"]["text"]
+            dynamic_item["data_type"] = ""
         else:
-            dynamic_item["视频简介"] = ""
-            dynamic_item["标题"] = ""
+            dynamic_item["content"] = ""
+            dynamic_item["data_type"] = ""
         # 动态发布人
-        dynamic_item["发布人名字"] = dynamic_info["modules"]["module_author"]["name"]
+        dynamic_item["author"] = dynamic_info["modules"]["module_author"]["name"]
         # 动态点赞量
-        dynamic_item["点赞数"] = dynamic_info["modules"]["module_stat"]["like"]["count"]
+        dynamic_item["like_count"] = dynamic_info["modules"]["module_stat"]["like"]["count"]
         # 动态评论量
-        dynamic_item["评论数"] = dynamic_info["modules"]["module_stat"]["comment"]["count"]
-        # 专栏收藏量
-        dynamic_item["转发人数"] = dynamic_info["modules"]["module_stat"]["forward"]["count"]
+        dynamic_item["comments_count"] = dynamic_info["modules"]["module_stat"]["comment"]["count"]
+        # 专栏转发量
+        dynamic_item["share_count"] = dynamic_info["modules"]["module_stat"]["forward"]["count"]
         # 专栏up主用户id
-        dynamic_item["用户id"] = uid
+        dynamic_item["user_id"] = uid
         return dynamic_item
 
     # 获取游戏中心评分，评论数
@@ -699,9 +704,9 @@ class BilibiliSpider(RedisSpider):
             return
         biliGame_item = response.meta["biliGame_item"]
         # 游戏评分
-        biliGame_item["评分"] = resp_json["data"]["grade"]
+        biliGame_item["mark"] = resp_json["data"]["grade"]
         # 游戏评论数
-        biliGame_item["评论数"] = resp_json["data"]["comment_number"]
+        biliGame_item["comments_count"] = resp_json["data"]["comment_number"]
         url = url_config["biliGame"]["game_info"].format(id=response.meta["url_info"]["config"]["gameId"])
         yield scrapy.Request(url=url, callback=self.get_biligame_gameinfo,
                              meta={"biliGame_item": biliGame_item, "url_info": response.meta["url_info"]},
@@ -714,16 +719,16 @@ class BilibiliSpider(RedisSpider):
             print("get biligame_gameinfo error")
             return
         biliGame_item = response.meta["biliGame_item"]
-        oid = biliGame_item["视频id"]
+        oid = biliGame_item["target_obj_id"]
         url_info = response.meta["url_info"]
         # 游戏下载量
-        biliGame_item["下载量"] = resp_json["data"]["download_count"]
+        biliGame_item["downloads"] = resp_json["data"]["download_count"]
         # 游戏预约量
         if "book_num" in resp_json["data"]:
-            biliGame_item["预约量"] = resp_json["data"]["book_num"]
+            biliGame_item["book_num"] = resp_json["data"]["book_num"]
         yield biliGame_item
         print("游戏中心基础数据拿完了，开始拿评论")
-        comment_count = biliGame_item["评论数"]
+        comment_count = biliGame_item["comments_count"]
         url = url_config["biliGame"]["replay_page"]
         page_index = 1
         # 循环去拿，直到评论被拿完
@@ -762,7 +767,7 @@ class BilibiliSpider(RedisSpider):
             if not self.check_time(timestamp):
                 return
             print("去拿用户信息")
-            url = f"https://api.bilibili.com/x/web-interface/card?mid={comment_item['用户id']}&photo=true&web_location=333.788"
+            url = f"https://api.bilibili.com/x/web-interface/card?mid={comment_item['user_id']}&photo=true&web_location=333.788"
             yield scrapy.Request(url=url, callback=self.get_user_card, meta={'item': comment_item},
                                  dont_filter=True)
             # 判断评论是否有子评论
@@ -810,29 +815,29 @@ class BilibiliSpider(RedisSpider):
         print("----------拿评论ing-----------")
         comment_item = NeonScrapyItem()
         # 类型是评论
-        comment_item["类型"] = reply_type
+        comment_item["data_type"] = reply_type
         # 类型是评论
-        comment_item["视频id"] = oid
+        comment_item["target_obj_id"] = oid
         # 评论内容
-        comment_item["评论"] = comment["content"]
+        comment_item[comment] = comment["content"]
         # 评论人
-        comment_item["评论人"] = comment["user_name"]
+        comment_item["commenter_name"] = comment["user_name"]
         # 评论点赞量
-        comment_item["评论点赞量"] = comment["up_count"]
+        comment_item["like_count"] = comment["up_count"]
         # 评论踩量
         if "down_count" in comment:
-            comment_item["评论踩量"] = comment["down_count"]
+            comment_item["down_count"] = comment["down_count"]
         # 评论回复量
         if "reply_count" in comment:
-            comment_item["评论回复量"] = comment["reply_count"]
+            comment_item["comment_reply_num"] = comment["reply_count"]
         # 评论时间
-        comment_item["评论时间"] = comment["publish_time"]
+        comment_item["comment_time"] = comment["publish_time"]
         # 去主页拿评论人的信息
         # 评论人mid
-        comment_item["用户id"] = comment["uid"]
+        comment_item["user_id"] = comment["uid"]
         return comment_item
         # print("去拿用户信息")
-        # url = f"https://api.bilibili.com/x/web-interface/card?mid={comment_item['用户id']}&photo=true&web_location=333.788"
+        # url = f"https://api.bilibili.com/x/web-interface/card?mid={comment_item['user_id']}&photo=true&web_location=333.788"
         # return scrapy.Request(url=url, callback=self.get_user_card, meta={'item': comment_item},
         #                       dont_filter=True)
 
