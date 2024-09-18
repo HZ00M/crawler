@@ -21,7 +21,7 @@ class NeonScrapyPipeline:
         item = dict(item)
         json_data = json.dumps(item, ensure_ascii=False) + ',\n'
         # 将数据写入文件
-        self.file.write(f"{self.index}:" + json_data)
+        self.file.write(f"\"{self.index}\":" + json_data)
         self.index += 1
         return item
 
