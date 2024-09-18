@@ -5,13 +5,13 @@ import time
 
 import scrapy
 
-from neon_scrapy import Util
-# from neon_scrapy.items import NeonScrapyCommentItem
-from neon_scrapy.items import NeonScrapyItem
-from neon_scrapy.page import bilibiliPage as Page
-from neon_scrapy.config import scrapy_config
-from neon_scrapy.config import cookies
-from neon_scrapy.config import url_config
+from yihai_scrapy import Util
+# from yihai_scrapy.items import NeonScrapyCommentItem
+from yihai_scrapy.items import NeonScrapyItem
+from yihai_scrapy.page import bilibiliPage as Page
+from yihai_scrapy.config import scrapy_config
+from yihai_scrapy.config import cookies
+from yihai_scrapy.config import url_config
 from datetime import datetime
 
 # ---1 导入分布式爬虫类

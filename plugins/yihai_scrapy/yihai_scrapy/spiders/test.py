@@ -7,8 +7,8 @@
 #     f.close()
 import requests
 import time
-from neon_scrapy import Util
-from neon_scrapy import items
+from yihai_scrapy import Util
+from yihai_scrapy import items
 import redis
 import pymysql
 from pymysql import OperationalError, ProgrammingError
@@ -52,7 +52,7 @@ from pymysql import OperationalError, ProgrammingError
 # print("game_base_id=106852&rank_type=2&page_num=1&page_size=10&ts=1723726908359&request_id=tevgTyt7sjCqzl4CKw849enLc0DpWr4u&appkey=h9Ejat5tFh81cq8V")
 # w_rid = Util.biligame_comment_decryption("&".join(replay))
 # print(w_rid)
-# from neon_scrapy.config import cookies
+# from yihai_scrapy.config import cookies
 # # if __name__ == '__main__':
 #
 # url2 = "https://api.bilibili.com/x/polymer/web-dynamic/v1/feed/space?offset=959804510703714360&host_mid=109710253"
@@ -90,7 +90,7 @@ from pymysql import OperationalError, ProgrammingError
 
 
 if __name__ == '__main__':
-    # from neon_scrapy.config import cookies
+    # from yihai_scrapy.config import cookies
     # url = "https://api.bilibili.com/x/polymer/web-dynamic/v1/feed/space?offset=&host_mid=109710253"
     # headers = {
     #     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36",

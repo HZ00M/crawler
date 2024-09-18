@@ -7,7 +7,7 @@ import time
 # useful for handling different item types with a single interface
 from itemadapter import ItemAdapter
 import json
-from neon_scrapy.mysql import scrapy_sql
+from yihai_scrapy.mysql import scrapy_sql
 
 
 class NeonScrapyPipeline:

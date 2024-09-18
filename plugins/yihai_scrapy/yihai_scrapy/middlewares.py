@@ -4,9 +4,9 @@
 # https://docs.scrapy.org/en/latest/topics/spider-middleware.html
 
 from scrapy import signals
-from neon_scrapy.settings import USER_AGENT_List
-# from neon_scrapy.settings import PROXY_LIST
-from neon_scrapy.ip_proxy import IpProxy
+from yihai_scrapy.settings import USER_AGENT_List
+# from yihai_scrapy.settings import PROXY_LIST
+from yihai_scrapy.ip_proxy import IpProxy
 from scrapy.exceptions import IgnoreRequest
 import random
 import base64

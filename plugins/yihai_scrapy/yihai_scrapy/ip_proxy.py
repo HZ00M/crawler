@@ -1,6 +1,6 @@
 import random
 
-from neon_scrapy import config
+from yihai_scrapy import config
 import requests
 import json
 import time

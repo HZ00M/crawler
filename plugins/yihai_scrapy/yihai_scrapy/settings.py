@@ -1,4 +1,4 @@
-# Scrapy settings for neon_scrapy project
+# Scrapy settings for yihai_scrapy project
 #
 # For simplicity, this file contains only settings considered important or
 # commonly used. You can find more settings consulting the documentation:
@@ -7,10 +7,10 @@
 #     https://docs.scrapy.org/en/latest/topics/downloader-middleware.html
 #     https://docs.scrapy.org/en/latest/topics/spider-middleware.html
 
-BOT_NAME = "neon_scrapy"
+BOT_NAME = "yihai_scrapy"
 
-SPIDER_MODULES = ["neon_scrapy.spiders"]
-NEWSPIDER_MODULE = "neon_scrapy.spiders"
+SPIDER_MODULES = ["yihai_scrapy.spiders"]
+NEWSPIDER_MODULE = "yihai_scrapy.spiders"
 
 # Crawl responsibly by identifying yourself (and your website) on the user-agent
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Safari/537.36"
@@ -94,7 +94,7 @@ DOWNLOAD_DELAY = 0.5
 # Enable or disable spider middlewares
 # See https://docs.scrapy.org/en/latest/topics/spider-middleware.html
 # SPIDER_MIDDLEWARES = {
-#    "neon_scrapy.middlewares.NeonScrapySpiderMiddleware": 543,
+#    "yihai_scrapy.middlewares.NeonScrapySpiderMiddleware": 543,
 # }
 
 # Enable or disable downloader middlewares
@@ -102,9 +102,9 @@ DOWNLOAD_DELAY = 0.5
 
 # 启用下载中间件 随机ip,随机等待
 DOWNLOADER_MIDDLEWARES = {
-    # "neon_scrapy.middlewares.NeonScrapyDownloaderMiddleware": 543,
-    "neon_scrapy.middlewares.RandomProxy": 544,
-    # "neon_scrapy.middlewares.RandomDelayMiddleware": 545,
+    # "yihai_scrapy.middlewares.NeonScrapyDownloaderMiddleware": 543,
+    "yihai_scrapy.middlewares.RandomProxy": 544,
+    # "yihai_scrapy.middlewares.RandomDelayMiddleware": 545,
 
 }
 # 随机等待区间
@@ -120,8 +120,8 @@ RANDOM_DELAY_MAX = 1
 # Configure item pipelines
 # See https://docs.scrapy.org/en/latest/topics/item-pipeline.html
 ITEM_PIPELINES = {
-    "neon_scrapy.pipelines.NeonScrapyPipeline": 300,
-    "neon_scrapy.pipelines.mysqlPipeline": 301,
+    "yihai_scrapy.pipelines.NeonScrapyPipeline": 300,
+    "yihai_scrapy.pipelines.mysqlPipeline": 301,
     'scrapy_redis.pipelines.RedisPipeline': 555,
 }
 
