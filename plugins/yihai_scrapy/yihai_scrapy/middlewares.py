@@ -8,6 +8,7 @@ from yihai_scrapy.settings import USER_AGENT_List
 # from yihai_scrapy.settings import PROXY_LIST
 from yihai_scrapy.ip_proxy import IpProxy
 from scrapy.exceptions import IgnoreRequest
+from twisted.internet import reactor
 import random
 import base64
 import time
@@ -158,6 +159,7 @@ class RandomProxy:
         return response
 
 
+
 # 随机等待
 class RandomDelayMiddleware:
     def __init__(self, delay_min=1, delay_max=5):
@@ -176,3 +178,27 @@ class RandomDelayMiddleware:
         print(f"Waiting for {delay} seconds...")
         # 使用Python标准库中的time模块进行等待
         time.sleep(delay)
+
+# 定时结束
+class TwistedMiddleware:
+    """
+    10s定时执行一次，如果120s没有消息过来，就自动停止运行
+    """
+    def __init__(self):
+        self.start_time = time.time()
+        self.spider = None
+        reactor.callLater(5, self.myFunction)
+
+    def myFunction(self):
+        if time.time() - self.start_time > 120:
+            print("120s没有新消息，停止运行")
+            self.spider.crawler.engine.close_spider(self.spider, 'timeout')
+        else:
+            print(f"上一次请求时间:{int(time.time() - self.start_time)}s前")
+        # 再次安排这个函数的调用
+        reactor.callLater(10, self.myFunction)
+
+    def process_request(self, request, spider):
+        self.start_time = time.time()
+        self.spider = spider
+

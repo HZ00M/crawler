@@ -105,6 +105,7 @@ DOWNLOADER_MIDDLEWARES = {
     # "yihai_scrapy.middlewares.NeonScrapyDownloaderMiddleware": 543,
     "yihai_scrapy.middlewares.RandomProxy": 544,
     # "yihai_scrapy.middlewares.RandomDelayMiddleware": 545,
+    # "yihai_scrapy.middlewares.TwistedMiddleware": 546,
 
 }
 # 随机等待区间
@@ -153,3 +154,5 @@ FEED_EXPORT_ENCODING = "utf-8"
 
 # redis地址
 REDIS_URL = 'redis://10.100.2.227:30379'
+
+SCHEDULER_IDLE_BEFORE_CLOSE:int = 20
