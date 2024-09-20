@@ -33,6 +33,7 @@ class BilibiliSpider(RedisSpider):
 
     def __init__(self, keyword="", execute_id=0, execute_name="", igore_word="", start_time=0, end_time=0, *args,
                  **kwargs):
+        print(kwargs)
         domain = kwargs.pop('domain', '')
         self.allowed_domains = list(filter(None, domain.split(',')))
         super(BilibiliSpider, self).__init__(*args, **kwargs)
@@ -47,7 +48,7 @@ class BilibiliSpider(RedisSpider):
         if start_time:
             self.start_time = start_time
         else:
-            self.start_time = int(time.time()) - 86400 * 3
+            self.start_time = int(time.time()) - 86400 * 4
         if end_time:
             self.end_time = end_time
         else:
@@ -299,27 +300,27 @@ class BilibiliSpider(RedisSpider):
 
         print(f"------------------- 视频{oid}详情页抓完了，开始抓评论 ------------------------")
 
-        # # 构造首页页签参数pagination_str
-        # first_page_pagination_str = {"offset": ""}
-        # pagination_str = Util.pagination_str(first_page_pagination_str)
-        # # 构造时间戳
-        # wts = int(time.time())
-        # temp = [
-        #     "mode=3",
-        #     f"oid={oid}",
-        #     f"pagination_str={pagination_str}",
-        #     "plat=1",
-        #     "seek_rpid=",
-        #     "type=1",
-        #     "web_location=1315875",
-        #     f"wts={wts}",
-        # ]
-        # w_rid = Util.comment_decryption("&".join(temp))
-        # url = "https://api.bilibili.com/x/v2/reply/wbi/main?" + "&".join(temp) + f"&w_rid={w_rid}"
-        # yield scrapy.Request(url=url, callback=self.get_video_comment,
-        #                      meta={'oid': oid, 'first_page': True, "type": 1, "randomProxy": False, },
-        #                      cookies=self.cookies,
-        #                      dont_filter=True)
+        # 构造首页页签参数pagination_str
+        first_page_pagination_str = {"offset": ""}
+        pagination_str = Util.pagination_str(first_page_pagination_str)
+        # 构造时间戳
+        wts = int(time.time())
+        temp = [
+            "mode=3",
+            f"oid={oid}",
+            f"pagination_str={pagination_str}",
+            "plat=1",
+            "seek_rpid=",
+            "type=1",
+            "web_location=1315875",
+            f"wts={wts}",
+        ]
+        w_rid = Util.comment_decryption("&".join(temp))
+        url = "https://api.bilibili.com/x/v2/reply/wbi/main?" + "&".join(temp) + f"&w_rid={w_rid}"
+        yield scrapy.Request(url=url, callback=self.get_video_comment,
+                             meta={'oid': oid, 'first_page': True, "type": 1, "randomProxy": False, },
+                             cookies=self.cookies,
+                             dont_filter=True)
 
     # 获取视频评论
     def get_video_comment(self, response):
@@ -443,7 +444,7 @@ class BilibiliSpider(RedisSpider):
         # 类型是评论
         comment_item["target_obj_id"] = oid
         # 评论内容
-        comment_item[comment] = comment["content"]["message"]
+        comment_item["comment"] = comment["content"]["message"]
         # 评论人
         comment_item["commenter_name"] = comment["member"]["uname"]
         # 评论点赞量
@@ -481,7 +482,7 @@ class BilibiliSpider(RedisSpider):
         # 用户会员
         item["user_member"] = data["card"]["vip"]["label"]["text"]
         # 用户主页uirl
-        item["user_homepage"] = "https://space.bilibili.com/" + item["user_id"]
+        item["user_homepage"] = f"https://space.bilibili.com/{item['user_id']}"
         yield item
 
     # 获取子评论内容
@@ -671,23 +672,23 @@ class BilibiliSpider(RedisSpider):
         # 标题和正文内容
         if dynamic_info["modules"]["module_dynamic"]["major"]:
             if "archive" in dynamic_info["modules"]["module_dynamic"]["major"]:
-                dynamic_item["data_type"] = dynamic_info["modules"]["module_dynamic"]["major"]["archive"]["title"]
+                dynamic_item["title"] = dynamic_info["modules"]["module_dynamic"]["major"]["archive"]["title"]
                 dynamic_item["content"] = dynamic_info["modules"]["module_dynamic"]["major"]["archive"]["desc"]
             elif "article" in dynamic_info["modules"]["module_dynamic"]["major"]:
-                dynamic_item["data_type"] = dynamic_info["modules"]["module_dynamic"]["major"]["article"]["title"]
+                dynamic_item["title"] = dynamic_info["modules"]["module_dynamic"]["major"]["article"]["title"]
                 dynamic_item["content"] = dynamic_info["modules"]["module_dynamic"]["major"]["article"]["desc"]
             elif "opus" in dynamic_info["modules"]["module_dynamic"]["major"]:
-                dynamic_item["data_type"] = dynamic_info["modules"]["module_dynamic"]["major"]["opus"]["title"]
+                dynamic_item["title"] = dynamic_info["modules"]["module_dynamic"]["major"]["opus"]["title"]
                 dynamic_item["content"] = dynamic_info["modules"]["module_dynamic"]["major"]["opus"]["summary"]["desc"]
             else:
-                dynamic_item["data_type"] = ""
+                dynamic_item["title"] = ""
                 dynamic_item["content"] = ""
         elif dynamic_info["modules"]["module_dynamic"]["desc"]:
             dynamic_item["content"] = dynamic_info["modules"]["module_dynamic"]["desc"]["text"]
-            dynamic_item["data_type"] = ""
+            dynamic_item["title"] = ""
         else:
             dynamic_item["content"] = ""
-            dynamic_item["data_type"] = ""
+            dynamic_item["title"] = ""
         # 动态发布人
         dynamic_item["author"] = dynamic_info["modules"]["module_author"]["name"]
         # 动态点赞量
@@ -765,7 +766,7 @@ class BilibiliSpider(RedisSpider):
         for comment in data["list"]:
             # 获取评论内容
             comment_item = self.get_biligame_single_reply(comment, oid=oid)
-            dt = datetime.strptime(comment_item['评论时间'], "%Y-%m-%d %H:%M:%S")
+            dt = datetime.strptime(comment_item['comment_time'], "%Y-%m-%d %H:%M:%S")
             # 转换为时间戳
             timestamp = int(time.mktime(dt.timetuple()))
             if not self.check_time(timestamp):
@@ -823,7 +824,7 @@ class BilibiliSpider(RedisSpider):
         # 类型是评论
         comment_item["target_obj_id"] = oid
         # 评论内容
-        comment_item[comment] = comment["content"]
+        comment_item["comment"] = comment["content"]
         # 评论人
         comment_item["commenter_name"] = comment["user_name"]
         # 评论点赞量
