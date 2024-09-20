@@ -5,7 +5,7 @@ FROM python:3.10-slim
 WORKDIR /app
 
 # 将当前目录下的所有文件复制到容器中的/app目录
-COPY .. /app
+COPY . /app
 
 # 创建Pyhthon虚拟环境
 RUN python -m venv venv
