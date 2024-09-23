@@ -71,23 +71,45 @@ class IpProxy:
         now_time = int(time.time())
         if IpProxy.expire -now_time < 300:
             IpProxy.get_signature()
-        now_time = time.time()
         # 如果等于0，代表没获取过时间，获取一下
         if IpProxy.proxy_list[proxy] == 0:
             url = f"https://dps.kdlapi.com/api/getdpsvalidtime?secret_id={IpProxy.secret_id}&signature={IpProxy.secret_token}&proxy={proxy}"
             result = requests.get(url=url)
             if result.status_code != 200:
-                print(f"getdps Response status_code != 200, status_code:{result.status_code}")
+                print(f"getdpsvalidtime Response status_code != 200, status_code:{result.status_code}")
                 return -1
             json_data = result.json()
             if json_data["code"] != 0:
-                print(f"getdps Response code != 0, res_code:{json_data['code']}")
+                print(f"getdpsvalidtime Response code != 0, res_code:{json_data['code']}")
                 return -1
             print(json_data["data"])
-            IpProxy.proxy_list[proxy] = now_time + json_data["data"][proxy]
+            IpProxy.proxy_list[proxy] = (now_time + json_data["data"][proxy])
+            print(f"{proxy}:{IpProxy.proxy_list[proxy]},now_time:{now_time},111")
             return json_data["data"][proxy]
         else:
+            print(f"{proxy}:{IpProxy.proxy_list[proxy]},now_time:{now_time},222")
             return IpProxy.proxy_list[proxy] - now_time
+
+    # 检测代理有效性
+    @staticmethod
+    def check_dps_valid(proxy):
+        # 如果签名过期时间小于五分钟，重新去拉取，更新一下签名
+        now_time = int(time.time())
+        if IpProxy.expire - now_time < 300:
+            IpProxy.get_signature()
+        # 如果等于0，代表没获取过时间，获取一下
+        url = f"https://dps.kdlapi.com/api/checkdpsvalid?secret_id={IpProxy.secret_id}&signature={IpProxy.secret_token}&proxy={proxy}"
+        result = requests.get(url=url)
+        if result.status_code != 200:
+            print(f"checkdpsvalid Response status_code != 200, status_code:{result.status_code}")
+            return False
+        json_data = result.json()
+        if json_data["code"] != 0:
+            print(f"checkdpsvalid Response code != 0, res_code:{json_data['code']}")
+            return False
+        print(json_data["data"])
+        # IpProxy.proxy_list[proxy] = now_time + json_data["data"][proxy]
+        return json_data["data"][proxy]
 
     # 获取订单ip剩余余额
     def get_ip_balance(self):
@@ -117,7 +139,11 @@ class IpProxy:
             proxy = random.choice(list(IpProxy.proxy_list.keys()))
             # 2、判断这个ip剩余时间，是否大于30s,小于30s就换一个新的
             ip_expire = IpProxy.get_dps_valid_time(proxy)
-            if ip_expire < 0:
+            print(f"proxy:{proxy} ip_expire:{ip_expire}")
+            if not IpProxy.check_dps_valid(proxy):
+                print(f"proxy:{proxy}不可用")
+                IpProxy.proxy_list.pop(proxy)
+            elif ip_expire < 0:
                 print(f"get {proxy} valid time error")
                 return proxy
             elif ip_expire <= 30:
