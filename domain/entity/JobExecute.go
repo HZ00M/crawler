@@ -34,12 +34,12 @@ type JobExecute struct {
 	MetaId          int
 	MetaName        string
 	KeyWord         string
-	IgoreWord       string
+	IgnoreWord      string
 	BeginTime       time.Time
 	EndTime         time.Time
 	ExecuteName     string `gorm:"type:varchar(255)" json:"execute_name"`
-	AppLableName    string
-	JobLableName    string
+	AppLabelName    string
+	JobLabelName    string
 	Namespace       string `gorm:"type:varchar(255)"`
 	Image           string `gorm:"type:varchar(255)"`
 	Command         string `gorm:"type:varchar(255)"`

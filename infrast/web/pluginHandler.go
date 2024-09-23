@@ -52,7 +52,7 @@ func (handler *PluginHandler) BuildImage(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	if _, err = dockerutil.BuildDockerImage(metaRecord.PluginPath, metaRecord.ImageName); err != nil {
+	if _, err = dockerutil.BuildDockerImage(metaRecord.Language, metaRecord.PluginPath, metaRecord.ImageName); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}

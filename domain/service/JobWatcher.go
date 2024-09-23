@@ -64,7 +64,7 @@ func handlerJobEvens(eventChan <-chan watch.Event) {
 			}()
 		case watch.Modified:
 			go func() {
-				onWatchMotifyJob(event.Object)
+				onWatchModifyJob(event.Object)
 			}()
 		case watch.Deleted:
 			go func() {
@@ -72,7 +72,7 @@ func handlerJobEvens(eventChan <-chan watch.Event) {
 			}()
 		case watch.Error:
 			go func() {
-				onWatcheErrorJob(event.Object)
+				onWatcherErrorJob(event.Object)
 			}()
 		default:
 			logging.Info("Unknown event type")
@@ -97,7 +97,7 @@ func handlerCronJobEvens(eventChan <-chan watch.Event) {
 			}()
 		case watch.Modified:
 			go func() {
-				onWatchMotifyCronJob(event.Object)
+				onWatchModifyCronJob(event.Object)
 			}()
 		case watch.Deleted:
 			go func() {
@@ -170,7 +170,7 @@ func onWatchDeleteJob(obj interface{}) {
 	}
 }
 
-func onWatchMotifyJob(obj interface{}) {
+func onWatchModifyJob(obj interface{}) {
 	logging.Info("Type of obj: %T\n", obj)
 	// 确保传入的对象类型正确
 	metaObj, ok := obj.(metav1.Object)
@@ -190,18 +190,24 @@ func onWatchMotifyJob(obj interface{}) {
 					return
 				}
 				if succeeded < 1 {
-					logging.Info("succeeded < 1 id %d succeeded %s", value, succeeded)
+					logging.Info("succeeded < 1 id %s succeeded %d", value, succeeded)
 					return
+				}
+				if executeRecord.JobStatus == int(entity.JobStatusRunning) {
+					var oldDataSize = executeRecord.DataSize
+					var queryDataSize = int(repo.GetJobRecordCountByExecuteId(executeId))
+					executeRecord.DataSize = queryDataSize
+					logging.Info("job watch JobStatusRunning update executeId %v oldDataSize %d queryDataSize %d", executeId, oldDataSize, queryDataSize)
 				}
 				if executeRecord.JobType == int(deploy.OnceJobType) {
 					executeRecord.ExecuteCount++
 					if executeRecord.ExecuteCount >= executeRecord.ParallelNum {
 						executeRecord.UpdateStatus(entity.JobStatusFinish)
 					}
-
 				} else if executeRecord.JobType == int(deploy.CylceJobType) {
 					executeRecord.ExecuteCount++
 				}
+
 				repo.EditJobExecute(executeRecord)
 				logging.Info("executeId %d succeeded %d executeRecord.ParallelNum %d executeRecord.ExecuteCount %d", executeId, succeeded, executeRecord.ParallelNum, executeRecord.ExecuteCount)
 			}
@@ -211,7 +217,7 @@ func onWatchMotifyJob(obj interface{}) {
 	}
 }
 
-func onWatcheErrorJob(obj interface{}) {
+func onWatcherErrorJob(obj interface{}) {
 	logging.Info("Type of obj: %T\n", obj)
 	// 确保传入的对象类型正确
 	if metaObj, ok := obj.(metav1.Object); ok {
@@ -264,7 +270,7 @@ func onWatchDeleteCronJob(obj interface{}) {
 
 }
 
-func onWatchMotifyCronJob(obj interface{}) {
+func onWatchModifyCronJob(obj interface{}) {
 	logging.Info("Type of obj: %T\n", obj)
 }
 

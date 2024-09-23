@@ -67,7 +67,7 @@ func (s *JobRecordService) CreateJobExecute(params map[string]interface{}) error
 		JobType     string `json:"job_type"`
 		Cron        string
 		KeyWord     string `json:"key_word"`
-		IgoreWord   string `json:"igore_word"`
+		IgnoreWord  string `json:"ignore_word"`
 		BeginTime   string `json:"begin_time"`
 		EndTime     string `json:"end_time"`
 		User        int    `json:"user_id"`
@@ -85,16 +85,9 @@ func (s *JobRecordService) CreateJobExecute(params map[string]interface{}) error
 		panic(fmt.Sprintf("Error unmarshalling json: %v", err))
 	}
 	var jobMeta *entity.JobMeta
-
-	if err != nil {
-		panic(fmt.Sprintf("Error job meta not found id %v: %v", req.MetaId, err))
-	}
 	jobTypeInt, err := strconv.Atoi(req.JobType)
 	if err != nil {
 		panic(fmt.Sprintf("Error strconv.Atoi(req.JobType) error %v: %v", req.JobType, err))
-	}
-	if err != nil {
-		panic(fmt.Sprintf("Error strconv.Atoi(req.JobType) error %v: %v", req.MetaId, err))
 	}
 	jobMeta, err = s.repo.GetJobMeta(req.MetaId)
 	if err != nil || jobMeta == nil {
@@ -105,7 +98,7 @@ func (s *JobRecordService) CreateJobExecute(params map[string]interface{}) error
 	end, err := time.Parse(time.RFC3339, req.EndTime)
 
 	fullImageName := dockerutil.GetFullImageName(jobMeta.ImageName)
-	jobName := jobMeta.LableName + "-" + generateRandomString()
+	jobName := jobMeta.LabelName + "-" + generateRandomString()
 	// 创建 JobExecute 实体
 	newExecute := &entity.JobExecute{
 		ExecuteName:     req.ExecuteName,
@@ -121,11 +114,11 @@ func (s *JobRecordService) CreateJobExecute(params map[string]interface{}) error
 		JobStatus:       int(entity.JobStatusInit),
 		MetaId:          req.MetaId,
 		MetaName:        jobMeta.MetaName,
-		AppLableName:    jobMeta.LableName,
-		JobLableName:    jobName,
+		AppLabelName:    jobMeta.LabelName,
+		JobLabelName:    jobName,
 		JobGroup:        jobName,
 		KeyWord:         req.KeyWord,
-		IgoreWord:       req.IgoreWord,
+		IgnoreWord:      req.IgnoreWord,
 		BeginTime:       begin,
 		EndTime:         end,
 	}
@@ -136,10 +129,11 @@ func (s *JobRecordService) CreateJobExecute(params map[string]interface{}) error
 	// 获取 Unix 时间戳
 	beginTimestamp := begin.Unix()
 	endTimestamp := end.Unix()
-	var args = fmt.Sprintf("--execute_id=%d	--execute_name=%s	key_word=%s	igore_word=%s	begin_time=%d	end_time=%d	%s",
-		newExecute.ID, req.ExecuteName, req.KeyWord, req.IgoreWord, beginTimestamp, endTimestamp, jobMeta.ExeArgs)
+	var args = fmt.Sprintf("execute_id=%d\texecute_name=%s\tkey_word=%s\tignore_word=%s\tbegin_time=%d\tend_time=%d\t%s",
+		newExecute.ID, req.ExecuteName, req.KeyWord, req.IgnoreWord, beginTimestamp, endTimestamp, jobMeta.ExeArgs)
 	logging.Info("args %s", args)
 	newExecute.ExeArgs = args
+	newExecute.EnvArgs = jobMeta.EnvArgs
 	if err := s.repo.EditJobExecute(newExecute); err != nil {
 		panic(fmt.Sprintf("Error EditJobExecute fail id %v: %v", req.MetaId, err))
 	}
@@ -218,10 +212,11 @@ func buildDeployConf(jobExecute entity.JobExecute) (*deploy.DeployJobConf, error
 		JobType:   deploy.JobType(jobExecute.JobType),
 		Namespace: jobExecute.Namespace,
 		ImageName: jobExecute.Image,
-		AppName:   jobExecute.AppLableName,
-		JobName:   jobExecute.JobLableName,
+		AppName:   jobExecute.AppLabelName,
+		JobName:   jobExecute.JobLabelName,
 		Command:   jobExecute.Command,
 		Args:      jobExecute.ExeArgs,
+		Envs:      jobExecute.EnvArgs,
 		Cron:      jobExecute.Cron,
 		Parallel:  jobExecute.ParallelNum,
 	}
@@ -298,9 +293,9 @@ func (s *JobRecordService) DeleteExecuteJob(id int) error {
 		}
 	}
 
-	err = s.repo.DeletaJobRecordByExecuteId(id)
+	err = s.repo.DeleteJobRecordByExecuteId(id)
 	if err != nil {
-		logging.Info("DeletaJobRecordByExecuteId error id %d %v", id, err)
+		logging.Info("DeleteJobRecordByExecuteId error id %d %v", id, err)
 		return err
 	}
 	err = s.repo.DeleteJobExecute(id)

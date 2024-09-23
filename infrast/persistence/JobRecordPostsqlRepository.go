@@ -128,9 +128,15 @@ func (repo *JobRecordPostsqlRepository) DeleteJobRecord(id int) error {
 	return nil
 }
 
-func (repo *JobRecordPostsqlRepository) DeletaJobRecordByExecuteId(executeId int) error {
+func (repo *JobRecordPostsqlRepository) DeleteJobRecordByExecuteId(executeId int) error {
 	if err := repo.gorm.Where(" execute_id = ?", executeId).Delete(&entity.JobRecord{}).Error; err != nil {
 		return err
 	}
 	return nil
+}
+func (repo *JobRecordPostsqlRepository) GetJobRecordCountByExecuteId(executeId int) int64 {
+	// 定义计数变量
+	var count int64 = 0
+	repo.gorm.Model(&entity.JobRecord{}).Where(" execute_id = ?", executeId).Count(&count)
+	return count
 }

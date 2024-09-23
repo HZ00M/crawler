@@ -6,9 +6,9 @@ import (
 	"strings"
 
 	"gopkg.in/yaml.v2"
-	v1 "k8s.io/api/batch/v1"
+	batchv1 "k8s.io/api/batch/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"syyx.com/crawler/pkg/k8sutil"
 	"syyx.com/crawler/pkg/logging"
 )
@@ -50,7 +50,7 @@ func (j CollyJob) Deploy(conf *DeployJobConf) (*DeployResult, error) {
 }
 
 // 动态设置模板值
-func appendJobValues(job *v1.Job, conf *DeployJobConf) {
+func appendJobValues(job *batchv1.Job, conf *DeployJobConf) {
 	parallel := int32(conf.Parallel)
 	job.ObjectMeta.Name = conf.JobName
 	job.ObjectMeta.Namespace = conf.Namespace
@@ -62,9 +62,21 @@ func appendJobValues(job *v1.Job, conf *DeployJobConf) {
 	job.Spec.Completions = &parallel
 	job.Spec.Template.Spec.Containers[0].Image = conf.ImageName
 	job.Spec.Template.Spec.Containers[0].Name = conf.AppName
-	command := strings.Split(conf.Command, "	") //[]string{"/bin/sh", "-c"}
+	command := strings.Split(conf.Command, "\t") //[]string{"/bin/sh", "-c"}
 	job.Spec.Template.Spec.Containers[0].Command = command
-	args := strings.Split(conf.Args, "	") //[]string{args}
+	args := strings.Split(conf.Args, "\t") //[]string{args}
 	job.Spec.Template.Spec.Containers[0].Args = args
-
+	envPairs := strings.Split(conf.Envs, "\t")
+	var envVars []corev1.EnvVar
+	// 遍历每个 KEY=VALUE 对，并转换为 v1.EnvVar 结构体
+	for _, pair := range envPairs {
+		parts := strings.SplitN(pair, "=", 2)
+		if len(parts) == 2 {
+			envVars = append(envVars, corev1.EnvVar{
+				Name:  parts[0],
+				Value: parts[1],
+			})
+		}
+	}
+	job.Spec.Template.Spec.Containers[0].Env = envVars
 }

@@ -7,7 +7,8 @@ const (
 type JobMeta struct {
 	ID         int    `gorm:"primary_key" json:"id"`
 	MetaName   string `json:"meta_name"`
-	LableName  string
+	Language   string
+	LabelName  string
 	ImageName  string `json:"image_name"`
 	Command    string `json:"command"`
 	Namespace  string

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	corev1 "k8s.io/api/core/v1"
+
 	v1 "k8s.io/api/batch/v1"
 	"k8s.io/api/batch/v1beta1"
 	v1Beta "k8s.io/api/batch/v1beta1"
@@ -26,6 +28,7 @@ type DeployJobConf struct {
 	ImageName string
 	Command   string
 	Args      string
+	Envs      string
 	Cron      string
 	JobName   string
 	Parallel  int
@@ -109,6 +112,19 @@ func appendCronJobValues(job *v1Beta.CronJob, conf *DeployJobConf) {
 	job.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Command = command
 	args := strings.Split(conf.Args, "	") //[]string{args}
 	job.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Args = args
+	envPairs := strings.Split(conf.Envs, "\t")
+	var envVars []corev1.EnvVar
+	// 遍历每个 KEY=VALUE 对，并转换为 v1.EnvVar 结构体
+	for _, pair := range envPairs {
+		parts := strings.SplitN(pair, "=", 2)
+		if len(parts) == 2 {
+			envVars = append(envVars, corev1.EnvVar{
+				Name:  parts[0],
+				Value: parts[1],
+			})
+		}
+	}
+	job.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Env = envVars
 
 }
 

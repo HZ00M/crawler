@@ -27,5 +27,7 @@ type JobRecordRepository interface {
 
 	DeleteJobRecord(id int) error
 
-	DeletaJobRecordByExecuteId(executeId int) error
+	DeleteJobRecordByExecuteId(executeId int) error
+
+	GetJobRecordCountByExecuteId(executeId int) int64
 }

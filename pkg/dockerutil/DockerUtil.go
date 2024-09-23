@@ -76,9 +76,9 @@ func GetFullImageName(imageNameWithTag string) string {
 }
 
 // 构建docker镜像
-func BuildDockerImage(dockerfileDir, imageNameWithTag string) (bool, error) {
+func BuildDockerImage(language, pluginRootDir, imageNameWithTag string) (bool, error) {
 	// 创建项目目录的 tar 文件
-	// tarReader, err := createTarFromDir(dockerfileDir)
+	// tarReader, err := createTarFromDir(pluginRootDir)
 	// option := types.ImageBuildOptions{
 	// 	Context:    tarReader,
 	// 	Dockerfile: "Dockerfile",
@@ -90,8 +90,8 @@ func BuildDockerImage(dockerfileDir, imageNameWithTag string) (bool, error) {
 		logging.Error("Error getting current directory: %s", err)
 		return false, err
 	}
-	dockerfileDir = filepath.Join(workDir, dockerfileDir)
-	buildContext, err := archive.TarWithOptions(dockerfileDir, &archive.TarOptions{})
+	pluginRootDir = filepath.Join(workDir, "plugins", language, pluginRootDir)
+	buildContext, err := archive.TarWithOptions(pluginRootDir, &archive.TarOptions{})
 	if err != nil {
 		logging.Error("Error creating build context: %s", err)
 		return false, err
@@ -146,11 +146,11 @@ func BuildDockerImage(dockerfileDir, imageNameWithTag string) (bool, error) {
 	// }
 	// defer pushResp.Close()
 	// pushSuccess, err := processBuildOutput(pushResp)
-	// logging.Info("ImagePush success %v dockerfileDir %v imageName %v tag %v ", pushSuccess, dockerfileDir, imageName, fullImageName)
+	// logging.Info("ImagePush success %v pluginRootDir %v imageName %v tag %v ", pushSuccess, pluginRootDir, imageName, fullImageName)
 	// _, err = localClient.ImageRemove(context.Background(), fullImageName, image.RemoveOptions{
 	// 	Force: true,
 	// })
-	// logging.Info("ImageRemove success %v dockerfileDir %v imageName %v tag %v ", pushSuccess, dockerfileDir, imageName, fullImageName)
+	// logging.Info("ImageRemove success %v pluginRootDir %v imageName %v tag %v ", pushSuccess, pluginRootDir, imageName, fullImageName)
 	// return pushSuccess, err
 }
 
