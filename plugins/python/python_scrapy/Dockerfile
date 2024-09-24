@@ -12,9 +12,10 @@ RUN python -m venv venv
 
 # 把镜像下载地址设置成豆瓣，默认是国外的，下载巨慢
 RUN venv/bin/pip config set global.index-url https://pypi.doubanio.com/simple
+# 升级pip到最新版本
+RUN venv/bin/python -m pip install --upgrade pip --no-use-pep517 && \
+    venv/bin/pip install -r requirements.txt
 
-# 安装项目的依赖包，假设requirements.txt中列出了依赖项
-RUN venv/bin/pip install -r requirements.txt
 
 # 运行Python脚本
 CMD ["venv/bin/python", "main.py"]
