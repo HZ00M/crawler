@@ -1,18 +1,16 @@
+# 使用 debian:buster-slim 作为基础镜像
+FROM default.registry.tke-syyx.com/syyx-tpf/base-python:3.10.0
 
-# 使用官方的Python镜像作为基础镜像
-FROM default.registry.tke-syyx.com/om/python:3.10-slim
-
+RUN python3.10 --version
 # 设置工作目录
 WORKDIR /app
 
-# 将当前目录下的所有文件复制到容器中的/app目录
-COPY . /app
+COPY . .
 
-#RUN ls /app/packages
-#RUN pip install --no-index --find-links=/app/packages -r requirements.txt
-RUN pip install --upgrade pip
-RUN pip config set global.index-url https://mirrors.aliyun.com/pypi/simple/ &&  pip install --no-cache-dir -r  requirements.txt
-RUN #pip config set global.index-url https://pypi.doubanio.com/simple
-#RUN pip install -r requirements.txt
-# 运行Python脚本
-CMD ["python", "main.py"]
+
+RUN apt list --installed
+# 安装 Python 依赖
+RUN pip3.10 install --no-cache-dir -r requirements.txt -i https://pypi.doubanio.com/simple --retries 5
+
+# 运行 Python 应用
+CMD ["python3.10", "main.py"]

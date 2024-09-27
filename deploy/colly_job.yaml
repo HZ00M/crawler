@@ -18,7 +18,7 @@ spec:
       - name: xxx-container
         image: xxx-image # 替换为你的 Docker 镜像
         imagePullPolicy: IfNotPresent
-        command: ["./your-go-executable"] # 替换为你的 Go 可执行文件
+        command: ["./your-execute-cmd"] # 替换为你的 Go 可执行文件
         args: ["arg1", "arg2"] # 替换为你的命令行参数，如果有的话
         env:
         - name: JOB_COMPLETION_INDEX

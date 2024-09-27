@@ -108,8 +108,10 @@ func appendCronJobValues(job *v1Beta.CronJob, conf *DeployJobConf) {
 	job.Spec.JobTemplate.Spec.Template.ObjectMeta.Labels["job-group"] = conf.JobName
 	job.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Image = conf.ImageName
 	job.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Name = conf.AppName
-	command := strings.Split(conf.Command, "	") //[]string{"/bin/sh", "-c"}
-	job.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Command = command
+	if conf.Command != "" {
+		command := strings.Split(conf.Command, "\t") //[]string{"/bin/sh", "-c"}
+		job.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Command = command
+	}
 	args := strings.Split(conf.Args, "	") //[]string{args}
 	job.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Args = args
 	envPairs := strings.Split(conf.Envs, "\t")

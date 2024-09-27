@@ -45,6 +45,6 @@ WORKDIR /app
 # 复制构建的二进制文件到该镜像
 COPY --from=builder /app/myapp .
 COPY --from=builder /app/conf ./conf
-
+COPY --from=builder /app/plugins ./plugins
 # 运行二进制文件
 CMD ["./myapp"]

@@ -62,8 +62,10 @@ func appendJobValues(job *batchv1.Job, conf *DeployJobConf) {
 	job.Spec.Completions = &parallel
 	job.Spec.Template.Spec.Containers[0].Image = conf.ImageName
 	job.Spec.Template.Spec.Containers[0].Name = conf.AppName
-	command := strings.Split(conf.Command, "\t") //[]string{"/bin/sh", "-c"}
-	job.Spec.Template.Spec.Containers[0].Command = command
+	if conf.Command != "" {
+		command := strings.Split(conf.Command, "\t") //[]string{"/bin/sh", "-c"}
+		job.Spec.Template.Spec.Containers[0].Command = command
+	}
 	args := strings.Split(conf.Args, "\t") //[]string{args}
 	job.Spec.Template.Spec.Containers[0].Args = args
 	envPairs := strings.Split(conf.Envs, "\t")
