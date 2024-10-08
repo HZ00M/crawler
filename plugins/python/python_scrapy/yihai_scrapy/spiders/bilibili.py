@@ -42,15 +42,15 @@ class BilibiliSpider(RedisSpider):
         temp = cookies
         self.cookies = {data.split('=')[0]: data.split('=')[1] for data in temp.split('; ')}
         self.key_word = key_word
-        self.execute_id = execute_id
+        self.execute_id = int(execute_id)
         self.execute_name = execute_name
         self.igore_word = igore_word
         if begin_time:
-            self.start_time = begin_time
+            self.start_time = int(begin_time)
         else:
             self.start_time = int(time.time()) - 86400 * 4
         if end_time:
-            self.end_time = end_time
+            self.end_time = int(end_time)
         else:
             self.end_time = int(time.time())
         # 添加起始url地址
