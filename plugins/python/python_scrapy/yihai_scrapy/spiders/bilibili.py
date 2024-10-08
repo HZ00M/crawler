@@ -31,7 +31,7 @@ class BilibiliSpider(RedisSpider):
     # ---4 设置redis-key
     redis_key = "bilibili_key"
 
-    def __init__(self, keyword="", execute_id=0, execute_name="", igore_word="", start_time=0, end_time=0, *args,
+    def __init__(self, keyword="", execute_id=0, execute_name="", igore_word="", begin_time=0, end_time=0, *args,
                  **kwargs):
         print(kwargs)
         domain = kwargs.pop('domain', '')
@@ -45,8 +45,8 @@ class BilibiliSpider(RedisSpider):
         self.execute_id = execute_id
         self.execute_name = execute_name
         self.igore_word = igore_word
-        if start_time:
-            self.start_time = start_time
+        if begin_time:
+            self.start_time = begin_time
         else:
             self.start_time = int(time.time()) - 86400 * 4
         if end_time:
