@@ -1,12 +1,10 @@
 # 使用 debian:buster-slim 作为基础镜像
 FROM default.registry.tke-syyx.com/syyx-tpf/base-python:3.10.0
 
-RUN python3.10 --version
 # 设置工作目录
 WORKDIR /app
 
 COPY . .
-
 
 RUN apt list --installed
 # 安装 Python 依赖

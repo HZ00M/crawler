@@ -10,7 +10,7 @@ type JobMeta struct {
 	Language   string
 	LabelName  string
 	ImageName  string `json:"image_name"`
-	Command    string `json:"command"`
+	Command    string
 	Namespace  string
 	EnvArgs    string
 	ExeArgs    string

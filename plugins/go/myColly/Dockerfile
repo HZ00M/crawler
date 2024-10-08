@@ -1,5 +1,5 @@
 # 使用官方 Debian 镜像作为构建阶段
-FROM debian:buster-slim AS builder
+FROM default.registry.tke-syyx.com/om/debian:buster-slim AS builder
 
 # 更换为阿里云的源
 RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/' /etc/apt/sources.list \
@@ -28,7 +28,7 @@ COPY . .
 RUN go build -a -mod=vendor -o myapp .
 
 # 使用一个更小的基础镜像（Debian）
-FROM debian:buster-slim
+FROM default.registry.tke-syyx.com/om/debian:buster-slim
 
 # 安装必要的证书
 RUN apt-get update && apt-get install -y ca-certificates --no-install-recommends && rm -rf /var/lib/apt/lists/*

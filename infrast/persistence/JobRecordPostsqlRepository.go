@@ -62,6 +62,17 @@ func (repo *JobRecordPostsqlRepository) GetJobExecutes(offset int, pageSize int,
 func (repo *JobRecordPostsqlRepository) GetJobExecute(id int) (*entity.JobExecute, error) {
 	var jobExecute entity.JobExecute
 	err := repo.gorm.Where("id = ?", id).First(&jobExecute).Error
+	if err == gorm.ErrRecordNotFound {
+		return nil, nil
+	}
+	if err != nil && err != gorm.ErrRecordNotFound {
+		return nil, err
+	}
+	return &jobExecute, nil
+}
+func (repo *JobRecordPostsqlRepository) GetJobExecuteByCron(id int) (*entity.JobExecute, error) {
+	var jobExecute entity.JobExecute
+	err := repo.gorm.Where("id = ?", id).First(&jobExecute).Error
 	if err != nil && err != gorm.ErrRecordNotFound {
 		return nil, err
 	}

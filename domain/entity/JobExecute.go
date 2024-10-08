@@ -14,12 +14,11 @@ type JobStatus int
 // 使用 iota 定义枚举常量
 const (
 	JobStatusInit JobStatus = iota // 0
-	// JobStatusPrepare
 	JobStatusRunning
 	JobStatusPending
 	JobStatusCancel
 	JobStatusFinish
-	JovStatusError
+	JobStatusError
 )
 
 type JobType int
@@ -32,14 +31,14 @@ const (
 type JobExecute struct {
 	ID              int64 `gorm:"primaryKey;autoIncrement"`
 	MetaId          int
-	MetaName        string
-	KeyWord         string
-	IgnoreWord      string
+	MetaName        string `gorm:"type:varchar(255)"`
+	KeyWord         string `gorm:"type:varchar(255)"`
+	IgnoreWord      string `gorm:"type:varchar(255)"`
 	BeginTime       time.Time
 	EndTime         time.Time
 	ExecuteName     string `gorm:"type:varchar(255)" json:"execute_name"`
-	AppLabelName    string
-	JobLabelName    string
+	AppLabelName    string `gorm:"type:varchar(255)"`
+	JobLabelName    string `gorm:"type:varchar(255)"`
 	Namespace       string `gorm:"type:varchar(255)"`
 	Image           string `gorm:"type:varchar(255)"`
 	Command         string `gorm:"type:varchar(255)"`
@@ -49,9 +48,11 @@ type JobExecute struct {
 	ResultTableName string `gorm:"type:varchar(255);default:'t_job_record'"  json:"result_table_name"`
 	DataSize        int    `json:"data_size"`
 	ExecuteCount    int
-	JobStatus       int `gorm:"type:int;default:0" json:"job_status"`
-	JobType         int `gorm:"type:int;default:0" json:"job_type"`
-	JobGroup        string
+	FinishCount     int
+	FailCount       int
+	JobStatus       int    `gorm:"type:int;default:0" json:"job_status"`
+	JobType         int    `gorm:"type:int;default:0" json:"job_type"`
+	JobGroup        string `gorm:"type:varchar(255)"`
 	ParallelNum     int
 	CreatedAt       time.Time `gorm:"type:timestamp with time zone" `
 	CreatedById     int64     `gorm:"column:createdById" json:"createdById"`

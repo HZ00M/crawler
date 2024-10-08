@@ -223,38 +223,47 @@ func buildDeployConf(jobExecute entity.JobExecute) (*deploy.DeployJobConf, error
 	return &deployConf, nil
 }
 
-func (s *JobRecordService) DoExecuteJob(id int) error {
-	record, err := s.repo.GetJobExecute(id)
-	if err != nil {
-		return err
+func (s *JobRecordService) DoExecuteJob(id int) (err error) {
+	var execute *entity.JobExecute
+	if execute, err = s.repo.GetJobExecute(id); err != nil {
+		logging.Error("execute not found %d", id)
+		return
 	}
+	if execute.JobType == int(deploy.OnceJobType) {
+		s.doExecuteOnceJob(execute)
+	} else if execute.JobType == int(deploy.CylceJobType) {
+		s.doExecuteCronJob(execute)
+	}
+	return nil
+}
+func (s *JobRecordService) doExecuteOnceJob(execute *entity.JobExecute) (err error) {
+	var deployJobConf *deploy.DeployJobConf
+	if deployJobConf, err = buildDeployConf(*execute); err != nil {
+		return
+	}
+	deployRet := deploy.Deploy(deployJobConf)
+	if !deployRet {
+		return fmt.Errorf("execute fail id %d ", execute.ID)
+	}
+	logging.Info("execute success id %d %v", execute.ID, execute)
+	return nil
+}
 
-	if record.JobType == int(deploy.OnceJobType) {
-		conf, err := buildDeployConf(*record)
-		if err != nil {
-			return err
+func (s *JobRecordService) doExecuteCronJob(execute *entity.JobExecute) (err error) {
+	if execute.JobStatus == int(entity.JobStatusInit) {
+		var deployJobConf *deploy.DeployJobConf
+		if deployJobConf, err = buildDeployConf(*execute); err != nil {
+			return
 		}
-		deployRet := deploy.Deploy(conf)
+		deployRet := deploy.Deploy(deployJobConf)
 		if !deployRet {
-			return fmt.Errorf("deployRet fail ret %s", deployRet)
+			return fmt.Errorf("deploy fail id %d ret %v", execute.ID, deployRet)
 		}
-		logging.Info("ExecuteJob Once Deploy %v", record)
-	} else if record.JobType == int(deploy.CylceJobType) {
-		if record.JobStatus == int(entity.JobStatusInit) {
-			conf, err := buildDeployConf(*record)
-			if err != nil {
-				return err
-			}
-			deployRet := deploy.Deploy(conf)
-			if !deployRet {
-				return fmt.Errorf("deployRet fail ret %s", deployRet)
-			}
-			logging.Info("ExecuteJob Cycle Deploy %v", record)
-		}
-		if record.JobStatus == int(entity.JobStatusPending) {
-			s.DoResumeCronJob(record.Namespace, record.JobGroup)
-			logging.Info("ExecuteJob Resume Cycle %v", record)
-		}
+		logging.Info("execute success id %d %v", execute.ID, execute)
+	}
+	if execute.JobStatus == int(entity.JobStatusPending) {
+		s.DoResumeCronJob(execute.Namespace, execute.JobGroup)
+		logging.Info("resume success id %d ", execute.ID)
 	}
 	return nil
 }

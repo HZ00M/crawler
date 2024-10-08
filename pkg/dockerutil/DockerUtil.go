@@ -77,14 +77,6 @@ func GetFullImageName(imageNameWithTag string) string {
 
 // 构建docker镜像
 func BuildDockerImage(language, pluginRootDir, imageNameWithTag string) (bool, error) {
-	// 创建项目目录的 tar 文件
-	// tarReader, err := createTarFromDir(pluginRootDir)
-	// option := types.ImageBuildOptions{
-	// 	Context:    tarReader,
-	// 	Dockerfile: "Dockerfile",
-	// 	Tags:       []string{imageName},
-	// 	Remove:     true,
-	// }
 	workDir, err := os.Getwd()
 	if err != nil {
 		logging.Error("Error getting current directory: %s", err)
@@ -102,7 +94,6 @@ func BuildDockerImage(language, pluginRootDir, imageNameWithTag string) (bool, e
 		Dockerfile: "Dockerfile", // 如果 Dockerfile 名称或路径不同，需要指定
 		Remove:     false,        // 删除中间层镜像
 	}
-
 	pwd, err := os.Getwd()
 	execPath, err := os.Executable()
 	if err != nil {

@@ -1,5 +1,4 @@
-# apiVersion: batch/v1 #k8s版本需1.20以上
-apiVersion: batch/v1beta1
+apiVersion: batch/v1 #k8s版本需1.20以上
 kind: CronJob
 metadata:
   name: crawler-app-ssssss 
@@ -10,13 +9,14 @@ metadata:
     execute-id: "77"
     job-group: crawler-app-ssssss
 spec:
-  schedule: '*/5 * * * *'  # 每天午夜执行一次
+  schedule: '*/5 * * * *'  # 每五分钟执行一次
   startingDeadlineSeconds: 60  # Job 触发的最后期限
   concurrencyPolicy: Forbid  # 禁止并发执行
   successfulJobsHistoryLimit: 3  # 保留3个成功的Job历史记录
   failedJobsHistoryLimit: 1  # 保留1个失败的Job历史记录
   jobTemplate:
     spec:
+      ttlSecondsAfterFinished: 60
       parallelism: 1  # 设置并行执行的 Job 数量
       completions: 1  # 完成任务的总数
       template:
@@ -24,7 +24,6 @@ spec:
           labels:
             app: crawler
         spec:
-          ttlSecondsAfterFinished: 60
           containers:
           - name: crawler-app
             image: default.registry.tke-syyx.com/syyx-tpf/colly:2.4

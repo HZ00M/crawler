@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	v1 "k8s.io/api/batch/v1"
+
 	"gopkg.in/yaml.v2"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -13,40 +15,27 @@ import (
 	"syyx.com/crawler/pkg/logging"
 )
 
-type CollyJob struct {
+type CollyJobHandler struct {
 }
 
-func (j CollyJob) Deploy(conf *DeployJobConf) (*DeployResult, error) {
-	// job, err := k8sutil.LoadJobFromYAML("deploy", "colly_job.yaml")
-	job, err := LoadJobFromYAML()
-	if err != nil {
-		logging.Error("DeployJob error %s", job.GetName())
+func (h CollyJobHandler) Deploy(conf *DeployJobConf) (ret bool, err error) {
+	var job *v1.Job
+	if job, err = loadJobTemplate(); err != nil {
+		logging.Error("loadJobTemplate error id %d name %s", conf.ExecuteID, conf.JobName)
+		return
 	}
-
 	appendJobValues(job, conf)
-	yamlData, err := yaml.Marshal(*job)
-	// 将 YAML 数据写入文件
-	// fileName := "job.yaml"
-	// err = os.WriteFile(fileName, yamlData, 0644)
-	// if err != nil {
-	// 	logging.Error("error writing YAML to file: %v", err)
-	// }
-	logging.Info("DeployJob success %s appendJobValues %s", job.GetName(), string(yamlData))
+	var yamlData []byte
+	if yamlData, err = yaml.Marshal(*job); err != nil {
+		logging.Error("marshal yamlData error id %d name %s %v", conf.ExecuteID, conf.JobName, err)
+		return
+	}
 	jobClient := k8sutil.K8sClient.BatchV1().Jobs(conf.Namespace)
-	createJob, err := jobClient.Create(context.TODO(), job, metav1.CreateOptions{})
-	if err != nil {
-		logging.Error("Deploy error %v", err)
-		result := &DeployResult{
-			ok: true,
-		}
-		return result, err
+	if job, err = jobClient.Create(context.TODO(), job, metav1.CreateOptions{}); err != nil {
+		return
 	}
-
-	logging.Info("Deploy success %v", createJob)
-	var result = &DeployResult{
-		ok: true,
-	}
-	return result, nil
+	logging.Info("success jobName %s yamlData %s", job.GetName(), string(yamlData))
+	return true, nil
 }
 
 // 动态设置模板值
