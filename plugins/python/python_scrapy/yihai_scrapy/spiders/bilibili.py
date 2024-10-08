@@ -31,7 +31,7 @@ class BilibiliSpider(RedisSpider):
     # ---4 设置redis-key
     redis_key = "bilibili_key"
 
-    def __init__(self, keyword="", execute_id=0, execute_name="", igore_word="", begin_time=0, end_time=0, *args,
+    def __init__(self, key_word="", execute_id=0, execute_name="", igore_word="", begin_time=0, end_time=0, *args,
                  **kwargs):
         print(kwargs)
         domain = kwargs.pop('domain', '')
@@ -41,7 +41,7 @@ class BilibiliSpider(RedisSpider):
         # super().__init__(**kwargs)
         temp = cookies
         self.cookies = {data.split('=')[0]: data.split('=')[1] for data in temp.split('; ')}
-        self.key_word = keyword
+        self.key_word = key_word
         self.execute_id = execute_id
         self.execute_name = execute_name
         self.igore_word = igore_word
@@ -54,16 +54,16 @@ class BilibiliSpider(RedisSpider):
         else:
             self.end_time = int(time.time())
         # 添加起始url地址
-        if keyword in scrapy_config:
-            config = scrapy_config[keyword]
-            keyword = Util.pagination_str_req(keyword)
+        if key_word in scrapy_config:
+            config = scrapy_config[key_word]
+            key_word = Util.pagination_str_req(key_word)
             # 视频
             if config["video"]:
                 url_info = {"config": config}
                 if config["sort_type"] == "1":
-                    url_info["url"] = url_config["video"]["init_page"].format(keyword=keyword, page="1")
+                    url_info["url"] = url_config["video"]["init_page"].format(keyword=key_word, page="1")
                 elif config["sort_type"] == "2":
-                    url_info["url"] = url_config["video"]["init_page"].format(keyword=keyword,
+                    url_info["url"] = url_config["video"]["init_page"].format(keyword=key_word,
                                                                               page="1") + "&order=pubdate"
                 else:
                     print(f"config sort_type error, keyword:{config['name']}")
@@ -75,10 +75,10 @@ class BilibiliSpider(RedisSpider):
             if config["article"]:
                 url_info = {"config": config}
                 if config["sort_type"] == "1":
-                    url_info["url"] = url_info["url"] = url_config["article"]["init_page"].format(keyword=keyword,
+                    url_info["url"] = url_info["url"] = url_config["article"]["init_page"].format(keyword=key_word,
                                                                                                   page="1")
                 elif config["sort_type"] == "2":
-                    url_info["url"] = url_info["url"] = url_config["article"]["init_page"].format(keyword=keyword,
+                    url_info["url"] = url_info["url"] = url_config["article"]["init_page"].format(keyword=key_word,
                                                                                                   page="1") + "&order=pubdate"
                 else:
                     print(f"config sort_type error, keyword:{config['name']}")
