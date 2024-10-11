@@ -1,5 +1,5 @@
 # 使用 debian:buster-slim 作为基础镜像
-FROM default.registry.tke-syyx.com/syyx-tpf/base-python:3.10.0
+FROM default.registry.tke-syyx.com/syyx-tpf/tpf-yh-python:3.10.0
 
 # 设置工作目录
 WORKDIR /app

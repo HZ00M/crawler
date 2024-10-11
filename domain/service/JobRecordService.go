@@ -141,9 +141,12 @@ func (s *JobRecordService) CreateJobExecute(params map[string]interface{}) error
 }
 
 func generateRandomString() string {
+	// 使用当前时间纳秒作为随机数生成器的种子
+	rand.Seed(time.Now().UnixNano())
+
 	b := make([]byte, stringLength)
 	for i := range b {
-		b[i] = letterBytes[rand.New(rand.NewSource(time.Now().UnixNano())).Intn(len(letterBytes))]
+		b[i] = letterBytes[rand.Intn(len(letterBytes))]
 	}
 	return string(b)
 }
