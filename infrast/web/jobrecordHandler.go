@@ -260,6 +260,7 @@ func (handler *JobRecordHandler) CreateJobExecute(ctx *gin.Context) {
 func (handler *JobRecordHandler) DoExecuteJob(ctx *gin.Context) {
 	id, err := strconv.Atoi(ctx.Query("id")) //ctx.Param("id") /:id
 	if err != nil {
+		logging.Error("ctx.Query() id %v err %v", id, err)
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -273,10 +274,12 @@ func (handler *JobRecordHandler) DoExecuteJob(ctx *gin.Context) {
 func (handler *JobRecordHandler) StopExecuteJob(ctx *gin.Context) {
 	id, err := strconv.Atoi(ctx.Query("id")) //ctx.Param("id") /:id
 	if err != nil {
+		logging.Error("ctx.Query() id %v err %v", id, err)
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 	if err := handler.service.StopExecuteJob(id); err != nil {
+		logging.Error("StopExecuteJob id %v err %v", id, err)
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
@@ -286,10 +289,12 @@ func (handler *JobRecordHandler) StopExecuteJob(ctx *gin.Context) {
 func (handler *JobRecordHandler) DeleteExecuteJob(ctx *gin.Context) {
 	id, err := strconv.Atoi(ctx.Query("id")) //ctx.Param("id") /:id
 	if err != nil {
+		logging.Error("ctx.Query() id %v err %v", id, err)
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 	if err := handler.service.DeleteExecuteJob(id); err != nil {
+		logging.Error("DeleteExecuteJob id %v err %v", id, err)
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}

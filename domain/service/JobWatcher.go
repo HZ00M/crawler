@@ -5,8 +5,9 @@ import (
 	"strconv"
 	"sync"
 
+	"syyx.com/crawler/pkg/k8sutil"
+
 	batchv1 "k8s.io/api/batch/v1" // 这是 Kubernetes API 的 batchv1 包
-	batchv1beta1 "k8s.io/api/batch/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/informers"
@@ -27,13 +28,19 @@ func watchEvent(clientset *kubernetes.Clientset, namespace string) {
 	jobWatcher, err := clientset.BatchV1().Jobs(namespace).Watch(context.TODO(), options)
 	if err != nil {
 		logging.Error("do Jobs Watch error namespace %s err %v", namespace, err)
-		panic("watchEvent error")
+		return
 	}
+	var cronJobWatcher watch.Interface
 	// 通过 clientset 的 BatchV1() 客户端获取 CronJob 的 Watcher
-	cronJobWatcher, err := clientset.BatchV1beta1().CronJobs(namespace).Watch(context.TODO(), options)
+	if k8sutil.VersionGreaterThan("1.20") {
+		cronJobWatcher, err = clientset.BatchV1().CronJobs(namespace).Watch(context.TODO(), options)
+	} else {
+		cronJobWatcher, err = clientset.BatchV1beta1().CronJobs(namespace).Watch(context.TODO(), options)
+	}
+
 	if err != nil {
 		logging.Error("do CronJobs Watch error namespace %s err %v", namespace, err)
-		panic("watchEvent error")
+		return
 	}
 	defer func() {
 		jobWatcher.Stop()
@@ -107,10 +114,7 @@ func handlerCronJobEvens(eventChan <-chan watch.Event) {
 		default:
 			logging.Info(" unknown event type")
 		}
-		//打印 CronJob 的状态
-		if job, ok := event.Object.(*batchv1beta1.CronJob); ok {
-			logging.Debug("eventInfo jobName %v status %v", job.Name, job.Status)
-		}
+
 	}
 }
 
@@ -139,7 +143,6 @@ func onWatchAddJob(obj interface{}) {
 					executeRecord.UpdateStatus(entity.JobStatusRunning)
 					//定时检查数据更新,更新t_job_execute记录的data_size
 					scheduledExecuteDataCheck(executeId)
-					logging.Info("execute running success executeId %d", executeId)
 				}
 				repo.EditJobExecute(executeRecord)
 			} else {
@@ -151,17 +154,9 @@ func onWatchAddJob(obj interface{}) {
 	}
 }
 func scheduledExecuteDataCheck(executeId int) {
+	logging.Info("start watch timer executeId %d", executeId)
 	tickerManager.StartTicker(executeId, 60, func() {
-		// 每个时间间隔到来时执行的操作
-		if executeRecord, err := repo.GetJobExecute(executeId); err == nil && executeRecord != nil {
-			//查询更新数据量信息
-			if executeRecord.JobStatus == int(entity.JobStatusRunning) {
-				var oldDataSize = executeRecord.DataSize
-				var queryDataSize = int(repo.GetJobRecordCountByExecuteId(executeId))
-				executeRecord.DataSize = queryDataSize
-				logging.Info("update DataSize id %v oldDataSize %d queryDataSize %d", executeId, oldDataSize, queryDataSize)
-			}
-		}
+		UpdataRecordDataCount(executeId)
 	})
 }
 
@@ -179,31 +174,32 @@ func onWatchModifyJob(obj interface{}) {
 	if executeId, exists := job.GetLabels()["execute-id"]; exists {
 		if executeId, err := strconv.Atoi(executeId); err == nil {
 			if executeRecord, err := repo.GetJobExecute(executeId); err == nil && executeRecord != nil {
-				logging.Info("onWatchModifyJob CylceJobType  executeId %d type %d succeeded %d failed %d completed %d ",
-					executeId, executeRecord.JobType, succeeded, failed, completed)
 				// 如果任务状态不是RUNNING，直接返回)
 				if executeRecord.JobStatus != int(entity.JobStatusRunning) {
-					logging.Info("not running id %v status %v", executeId, executeRecord.JobStatus)
+					logging.Info("not running executeId %d status %s", executeId, entity.JobStatus(executeRecord.JobStatus))
 					return
 				}
 
-				if executeRecord.JobType == int(deploy.OnceJobType) {
+				if executeRecord.JobType == int(deploy.OnceJob) {
+					var finishCount = executeRecord.FinishCount
+					var failCount = executeRecord.FailCount
 					// 更新成功数和失败数
 					if succeeded > executeRecord.FinishCount {
 						executeRecord.FinishCount = succeeded
-						logging.Info("updated SucceededCount id %v succeeded %d", executeId, succeeded)
 					}
-
 					if failed > executeRecord.FailCount {
 						executeRecord.FailCount = failed
-						logging.Info("updated FailedCount id %v failed %d", executeId, failed)
 					}
 					//如果是单次任务且执行完成次数等于并行数，则本次任务执行完成
 					if completed {
 						executeRecord.UpdateStatus(entity.JobStatusFinish)
-						tickerManager.StopTicker(executeId)
+						tickerManager.StopTicker(executeId, func() {
+							UpdataRecordDataCount(executeId)
+						})
 					}
-				} else if executeRecord.JobType == int(deploy.CylceJobType) {
+					logging.Info("updated OnceJob completed info id %v FinishCount %d FailCount %d NewFinishCount %d NewFailCount %d",
+						executeId, finishCount, failCount, executeRecord.FinishCount, executeRecord.FailCount)
+				} else if executeRecord.JobType == int(deploy.CycleJob) {
 					//如果是单次任务且执行完成次数等于并行数，则本次任务执行完成
 					if completed {
 						var finishCount = executeRecord.FinishCount
@@ -211,14 +207,11 @@ func onWatchModifyJob(obj interface{}) {
 						// 更新成功数和失败数
 						executeRecord.FinishCount += succeeded
 						executeRecord.FailCount += failed
-						executeRecord.UpdateStatus(entity.JobStatusFinish)
-						logging.Info("updated SucceededCount id %v FinishCount %d FailCount %d NewFinishCount %d NewFailCount %d",
+						logging.Info("updated CycleJob completed info id %v FinishCount %d FailCount %d NewFinishCount %d NewFailCount %d",
 							executeId, finishCount, failCount, executeRecord.FinishCount, executeRecord.FailCount)
 					}
 				}
 				repo.EditJobExecute(executeRecord)
-				logging.Info("onWatchModifyJob update executeId %d succeeded %d ParallelNum %d ExecuteCount %d JobStatus %d",
-					executeId, succeeded, executeRecord.ParallelNum, executeRecord.ExecuteCount, executeRecord.JobStatus)
 			} else {
 				logging.Info("executeRecord not found %d", executeId)
 			}
@@ -227,7 +220,19 @@ func onWatchModifyJob(obj interface{}) {
 		logging.Info(" Label 'execute-id' not found")
 	}
 }
-
+func UpdataRecordDataCount(executeId int) {
+	// 每个时间间隔到来时执行的操作
+	if executeRecord, err := repo.GetJobExecute(executeId); err == nil && executeRecord != nil {
+		//查询更新数据量信息
+		if executeRecord.JobStatus == int(entity.JobStatusRunning) {
+			var oldDataSize = executeRecord.DataSize
+			var queryDataSize = int(repo.GetJobRecordCountByExecuteId(executeId))
+			executeRecord.DataSize = queryDataSize
+			repo.EditJobExecute(executeRecord)
+			logging.Info("execute update DataSize id %v oldDataSize %d queryDataSize %d", executeId, oldDataSize, queryDataSize)
+		}
+	}
+}
 func onWatchDeleteJob(obj interface{}) {
 	// 确保传入的对象类型正确
 	job, ok := obj.(*batchv1.Job)
@@ -238,12 +243,13 @@ func onWatchDeleteJob(obj interface{}) {
 	// 获取指定标签的值
 	if executeId, exists := job.GetLabels()["execute-id"]; exists {
 		if executeId, err := strconv.Atoi(executeId); err == nil {
-			logging.Info("onWatchDeleteJob executeId  %d", executeId)
 			if executeRecord, err := repo.GetJobExecute(executeId); err == nil && executeRecord != nil {
-				if executeRecord.JobType == int(deploy.OnceJobType) {
+				if executeRecord.JobType == int(deploy.OnceJob) {
 					executeRecord.UpdateStatus(entity.JobStatusCancel)
-				} else if executeRecord.JobType == int(deploy.CylceJobType) {
-					tickerManager.StopTicker(executeId)
+				} else if executeRecord.JobType == int(deploy.CycleJob) {
+					tickerManager.StopTicker(executeId, func() {
+						UpdataRecordDataCount(executeId)
+					})
 				}
 				repo.EditJobExecute(executeRecord)
 			} else {
@@ -280,7 +286,6 @@ func onWatcherErrorJob(obj interface{}) {
 }
 
 func onWatchAddCronJob(obj interface{}) {
-	logging.Info("Type of obj: %T\n", obj)
 	// 确保传入的对象类型正确
 	metaObj, ok := obj.(metav1.Object)
 	if !ok {
@@ -295,7 +300,7 @@ func onWatchAddCronJob(obj interface{}) {
 				if executeRecord.JobStatus == int(entity.JobStatusInit) {
 					executeRecord.UpdateStatus(entity.JobStatusRunning)
 					repo.EditJobExecute(executeRecord)
-					logging.Info("update JobStatusRunning")
+					scheduledExecuteDataCheck(executeId)
 				}
 			}
 		}
@@ -305,7 +310,27 @@ func onWatchAddCronJob(obj interface{}) {
 }
 
 func onWatchDeleteCronJob(obj interface{}) {
-	logging.Info("Type of obj: %T\n", obj)
+	// 确保传入的对象类型正确
+	metaObj, ok := obj.(metav1.Object)
+	if !ok {
+		logging.Warn(": Unexpected object type")
+		return
+	}
+	// 获取指定标签的值
+	if value, exists := metaObj.GetLabels()["execute-id"]; exists {
+		logging.Info("Label 'execute-id': %s", value)
+		if executeId, err := strconv.Atoi(value); err == nil {
+			if executeRecord, err := repo.GetJobExecute(executeId); err == nil {
+				executeRecord.UpdateStatus(entity.JobStatusCancel)
+				repo.EditJobExecute(executeRecord)
+				tickerManager.StopTicker(executeId, func() {
+					UpdataRecordDataCount(executeId)
+				})
+			}
+		}
+	} else {
+		logging.Info(" Label 'execute-id' not found")
+	}
 
 }
 
@@ -314,8 +339,27 @@ func onWatchModifyCronJob(obj interface{}) {
 }
 
 func onWatcheErrorCronJob(obj interface{}) {
-	logging.Info("Type of obj: %T\n", obj)
-
+	// 确保传入的对象类型正确
+	metaObj, ok := obj.(metav1.Object)
+	if !ok {
+		logging.Warn(": Unexpected object type")
+		return
+	}
+	// 获取指定标签的值
+	if value, exists := metaObj.GetLabels()["execute-id"]; exists {
+		logging.Info("Label 'execute-id': %s", value)
+		if executeId, err := strconv.Atoi(value); err == nil {
+			if executeRecord, err := repo.GetJobExecute(executeId); err == nil {
+				executeRecord.UpdateStatus(entity.JobStatusError)
+				repo.EditJobExecute(executeRecord)
+				tickerManager.StopTicker(executeId, func() {
+					UpdataRecordDataCount(executeId)
+				})
+			}
+		}
+	} else {
+		logging.Info(" Label 'execute-id' not found")
+	}
 }
 
 func watchJob(clientset *kubernetes.Clientset) {

@@ -60,9 +60,12 @@ func main() {
 			argsMap[parts[0]] = parts[1]
 		}
 	}
+	logging.Info("Parsed arguments %s", os.Args[1:])
+	logging.Info("Parsed argsMap %v", argsMap)
 
-	logging.Info("Parsed arguments:", os.Args[1:])
-	logging.Info("Parsed argsMap:", argsMap)
+	JOB_COMPLETION_INDEX := os.Getenv("JOB_COMPLETION_INDEX")
+	logging.Info("Env JOB_COMPLETION_INDEX %s", JOB_COMPLETION_INDEX)
+
 	done := make(chan struct{})
 	go func() {
 		executeId, _ := strconv.Atoi(argsMap["execute_id"])

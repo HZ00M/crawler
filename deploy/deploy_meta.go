@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	"syyx.com/crawler/pkg/k8sutil"
+
 	v1 "k8s.io/api/batch/v1"
 	"k8s.io/api/batch/v1beta1"
 	v1Beta "k8s.io/api/batch/v1beta1"
@@ -37,29 +39,46 @@ type DeployJobConf struct {
 }
 
 type JobType int
+type JobHanler int
 
 const (
-	OnceJobType JobType = iota
-	CylceJobType
+	OnceJob JobType = iota
+	CycleJob
+)
+const (
+	OnceJobHandler JobHanler = iota
+	CycleJobHandler
+	CycleJobBetaHandler
 )
 
 type DeployJobHandler interface {
 	Deploy(conf *DeployJobConf) (bool, error)
 }
 
-var deployServices map[JobType]DeployJobHandler
+var deployServices map[JobHanler]DeployJobHandler
 
 func init() {
 	// 创建服务映射
-	deployServices = map[JobType]DeployJobHandler{
-		OnceJobType:  CollyJobHandler{},
-		CylceJobType: CollyCronJobBetaHandler{},
+	deployServices = map[JobHanler]DeployJobHandler{
+		OnceJobHandler:      CollyJobHandler{},
+		CycleJobHandler:     CollyCronJobHandler{},
+		CycleJobBetaHandler: CollyCronJobBetaHandler{},
 	}
 }
 
 func Deploy(conf *DeployJobConf) bool {
-	plugin := deployServices[conf.JobType]
-	ret, err := plugin.Deploy(conf)
+	var handler DeployJobHandler
+	if conf.JobType == OnceJob {
+		handler = deployServices[OnceJobHandler]
+	} else if conf.JobType == CycleJob {
+		//1.18以上支持使用 fieldRef 来引用 Pod 的注解和其他字段
+		if k8sutil.VersionGreaterThan("1.20") {
+			handler = deployServices[CycleJobHandler]
+		} else {
+			handler = deployServices[CycleJobBetaHandler]
+		}
+	}
+	ret, err := handler.Deploy(conf)
 	if err != nil {
 		logging.Error("Deploy error %v %v", conf, err)
 		return false

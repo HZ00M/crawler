@@ -3,6 +3,8 @@ package persistence
 import (
 	"sync"
 
+	"syyx.com/crawler/pkg/logging"
+
 	"gorm.io/gorm"
 	"syyx.com/crawler/domain/entity"
 	"syyx.com/crawler/domain/repository"
@@ -61,12 +63,14 @@ func (repo *JobRecordPostsqlRepository) GetJobExecutes(offset int, pageSize int,
 
 func (repo *JobRecordPostsqlRepository) GetJobExecute(id int) (*entity.JobExecute, error) {
 	var jobExecute entity.JobExecute
-	err := repo.gorm.Where("id = ?", id).First(&jobExecute).Error
-	if err == gorm.ErrRecordNotFound {
+	tx := repo.gorm.Where("id = ?", id).First(&jobExecute)
+	if tx.Error == gorm.ErrRecordNotFound {
+		logging.Info("executeId %d not found ", id)
 		return nil, nil
 	}
-	if err != nil && err != gorm.ErrRecordNotFound {
-		return nil, err
+	if tx.Error != nil {
+		logging.Error("executeId %d %v ", id, tx.Error)
+		return nil, tx.Error
 	}
 	return &jobExecute, nil
 }

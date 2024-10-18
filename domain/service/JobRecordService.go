@@ -232,9 +232,9 @@ func (s *JobRecordService) DoExecuteJob(id int) (err error) {
 		logging.Error("execute not found %d", id)
 		return
 	}
-	if execute.JobType == int(deploy.OnceJobType) {
+	if execute.JobType == int(deploy.OnceJob) {
 		s.doExecuteOnceJob(execute)
-	} else if execute.JobType == int(deploy.CylceJobType) {
+	} else if execute.JobType == int(deploy.CycleJob) {
 		s.doExecuteCronJob(execute)
 	}
 	return nil
@@ -276,9 +276,9 @@ func (s *JobRecordService) StopExecuteJob(id int) error {
 	if err != nil {
 		return err
 	}
-	if record.JobType == int(deploy.OnceJobType) {
+	if record.JobType == int(deploy.OnceJob) {
 		s.DoStopJob(record.Namespace, record.JobGroup)
-	} else if record.JobType == int(deploy.CylceJobType) {
+	} else if record.JobType == int(deploy.CycleJob) {
 		s.DoSuspendCronJob(record.Namespace, record.JobGroup)
 	}
 	return nil
@@ -290,14 +290,14 @@ func (s *JobRecordService) DeleteExecuteJob(id int) error {
 		logging.Info("GetJobExecute error id %d %v", id, err)
 		return err
 	}
-	if record.JobType == int(deploy.OnceJobType) {
+	if record.JobType == int(deploy.OnceJob) {
 		err = s.DoStopJob(record.Namespace, record.JobGroup)
 		if err != nil {
 			logging.Info("DoStopJob error id %d %v", id, err)
 			return err
 		}
 
-	} else if record.JobType == int(deploy.CylceJobType) {
+	} else if record.JobType == int(deploy.CycleJob) {
 		err = s.DoStopCronJob(record.Namespace, record.JobGroup)
 		if err != nil {
 			logging.Info("DoStopCronJob error id %d %v", id, err)
@@ -336,67 +336,63 @@ func (s *JobRecordService) DoStopJob(namespace, jobName string) error {
 }
 
 func (s *JobRecordService) DoSuspendCronJob(namespace, jobName string) error {
-	cronJob, err := k8sutil.K8sClient.BatchV1beta1().CronJobs(namespace).Get(context.TODO(), jobName, metav1.GetOptions{})
-	if err != nil {
-		logging.Error("DoSuspendCronJob Error getting CronJob: %v", err)
-		return err
-	}
+	var executeId int
 	// Set suspend to true to stop CronJob scheduling
 	trueVar := true
-	cronJob.Spec.Suspend = &trueVar
-	k8sutil.K8sClient.BatchV1beta1().CronJobs(namespace).Update(context.TODO(), cronJob, metav1.UpdateOptions{})
-	if err != nil {
-		logging.Error("DoSuspendCronJob Error updating CronJob: %v", err)
-		return err
-	}
-	// 获取指定标签的值
-	if value, exists := cronJob.Labels["execute-id"]; exists {
-		logging.Info("DoSuspendCronJob Label 'execute-id': %s", value)
-		if executeId, err := strconv.Atoi(value); err == nil {
-			if executeRecord, err := s.repo.GetJobExecute(executeId); err == nil {
-				executeRecord.UpdateStatus(entity.JobStatusPending)
-				s.repo.EditJobExecute(executeRecord)
-				logging.Info("DoSuspendCronJob update JobStatusPending")
-			}
+	if k8sutil.VersionGreaterThan("1.20") {
+		cronJob, err := k8sutil.K8sClient.BatchV1().CronJobs(namespace).Get(context.TODO(), jobName, metav1.GetOptions{})
+		if err != nil {
+			logging.Error("DoSuspendCronJob Error getting CronJob: %v", err)
+			return err
 		}
+		cronJob.Spec.Suspend = &trueVar
+		k8sutil.K8sClient.BatchV1().CronJobs(namespace).Update(context.TODO(), cronJob, metav1.UpdateOptions{})
+		executeId, err = strconv.Atoi(cronJob.Labels["execute-id"])
 	} else {
-		logging.Info("DoSuspendCronJob Label 'execute-id' not found")
+		cronJob, err := k8sutil.K8sClient.BatchV1beta1().CronJobs(namespace).Get(context.TODO(), jobName, metav1.GetOptions{})
+		if err != nil {
+			logging.Error("DoSuspendCronJob Error getting CronJob: %v", err)
+			return err
+		}
+		cronJob.Spec.Suspend = &trueVar
+		k8sutil.K8sClient.BatchV1beta1().CronJobs(namespace).Update(context.TODO(), cronJob, metav1.UpdateOptions{})
+		executeId, err = strconv.Atoi(cronJob.Labels["execute-id"])
 	}
-	return err
+	if executeRecord, err := s.repo.GetJobExecute(executeId); err == nil {
+		executeRecord.UpdateStatus(entity.JobStatusPending)
+		s.repo.EditJobExecute(executeRecord)
+		tickerManager.StopTicker(executeId, func() {
+			UpdataRecordDataCount(executeId)
+		})
+	}
+	return nil
 }
 
 func (s *JobRecordService) DoResumeCronJob(namespace, jobName string) error {
-	cronJob, err := k8sutil.K8sClient.BatchV1beta1().CronJobs(namespace).Get(context.TODO(), jobName, metav1.GetOptions{})
+	var executeId int
+	trueVar := false
+	cronJob, err := k8sutil.K8sClient.BatchV1().CronJobs(namespace).Get(context.TODO(), jobName, metav1.GetOptions{})
 	if err != nil {
 		logging.Error("DoResumeCronJob Error getting CronJob: %v", err)
 	}
-	// Set suspend to true to stop CronJob scheduling
-	trueVar := false
 	cronJob.Spec.Suspend = &trueVar
-	k8sutil.K8sClient.BatchV1beta1().CronJobs(namespace).Update(context.TODO(), cronJob, metav1.UpdateOptions{})
+	k8sutil.K8sClient.BatchV1().CronJobs(namespace).Update(context.TODO(), cronJob, metav1.UpdateOptions{})
 	if err != nil {
 		logging.Error("DoResumeCronJob Error updating CronJob: %v", err)
 		return err
 	}
-	// 获取指定标签的值
-	if value, exists := cronJob.Labels["execute-id"]; exists {
-		logging.Info("DoResumeCronJob Label 'execute-id': %s", value)
-		if executeId, err := strconv.Atoi(value); err == nil {
-			if executeRecord, err := s.repo.GetJobExecute(executeId); err == nil {
-				executeRecord.UpdateStatus(entity.JobStatusRunning)
-				s.repo.EditJobExecute(executeRecord)
-				logging.Info("DoResumeCronJob update JobStatusRunning")
-			}
-		}
-	} else {
-		logging.Info("DoResumeCronJob Label 'execute-id' not found")
+	executeId, err = strconv.Atoi(cronJob.Labels["execute-id"])
+	if executeRecord, err := s.repo.GetJobExecute(executeId); err == nil {
+		executeRecord.UpdateStatus(entity.JobStatusRunning)
+		s.repo.EditJobExecute(executeRecord)
+		scheduledExecuteDataCheck(executeId)
 	}
 	return nil
 }
 
 func (s *JobRecordService) DoStopCronJob(namespace, jobName string) error {
 	// List Jobs with the specified label
-	err := k8sutil.K8sClient.BatchV1beta1().CronJobs(namespace).Delete(context.TODO(), jobName, metav1.DeleteOptions{})
+	err := k8sutil.K8sClient.BatchV1().CronJobs(namespace).Delete(context.TODO(), jobName, metav1.DeleteOptions{})
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Job 不存在的情况下认为删除成功

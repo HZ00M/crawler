@@ -2,6 +2,8 @@ package entity
 
 import (
 	"time"
+
+	"syyx.com/crawler/pkg/logging"
 )
 
 const (
@@ -20,6 +22,26 @@ const (
 	JobStatusFinish
 	JobStatusError
 )
+
+// String 方法返回 JobStatus 的字符串表示
+func (status JobStatus) String() string {
+	switch status {
+	case JobStatusInit:
+		return "JobStatusInit"
+	case JobStatusRunning:
+		return "JobStatusRunning"
+	case JobStatusPending:
+		return "JobStatusPending"
+	case JobStatusCancel:
+		return "JobStatusCancel"
+	case JobStatusFinish:
+		return "JobStatusFinish"
+	case JobStatusError:
+		return "JobStatusError"
+	default:
+		return "Unknown"
+	}
+}
 
 type JobType int
 
@@ -71,5 +93,8 @@ func (execute *JobExecute) AppendExtraArg(key, value string) {
 }
 
 func (execute *JobExecute) UpdateStatus(status JobStatus) {
+	currentStatus := JobStatus(execute.JobStatus)
 	execute.JobStatus = int(status)
+	logging.Info("update executeId %d status %s -> %s",
+		execute.ID, currentStatus, status)
 }

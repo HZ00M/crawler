@@ -1,0 +1,87 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: crawler-configmap
+  namespace: crawler-platform-ehijoy  # 可以根据实际情况调整命名空间
+data:
+  app.ini: |
+    [app]
+    PageSize = 10
+    JwtSecret = 233
+    PrefixUrl = http://127.0.0.1:8000
+
+    RuntimeRootPath = runtime/
+
+    ImageSavePath = upload/images/
+    # MB
+    ImageMaxSize = 5
+    ImageAllowExts = .jpg,.jpeg,.png
+
+    ExportSavePath = export/
+    QrCodeSavePath = qrcode/
+    FontSavePath = fonts/
+
+    LogSavePath = logs/
+    LogSaveName = log
+    LogFileExt = log
+    TimeFormat = 20060102
+
+    [server]
+    #debug or release
+    RunMode = debug
+    HttpPort = 8000
+    ReadTimeout = 60
+    WriteTimeout = 60
+
+    [database]
+    Host = postgres
+    Port = 5432
+    User = postgres
+    Password = 123456
+    Dbname = crawler
+    Sslmode = disable 
+    ; Type = mysql
+    ; User = root
+    ; Password = rootroot
+    ; Host = 127.0.0.1:3306
+    ; Name = blog
+    ; TablePrefix = blog_
+
+    [redis]
+    Host = 127.0.0.1:30379
+    Password =
+    MaxIdle = 30
+    MaxActive = 30
+    IdleTimeout = 200
+
+    [k8s]
+    KubeConfig = conf/kubeconfig.yaml
+    DefaultNamespace = crawler-platform-ehijoy
+
+    [docker]
+    RegistryAddr = default.registry.tke-syyx.com
+    RegistryDir = syyx-tpf
+    RegistryUsername = tkestack
+    RegistryPassword = eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjQ4NzcyMTk4MjQsImp0aSI6ImY2ZjUiLCJpYXQiOjE3MjM2MTk4MjQsInVzciI6Imh1aXd1IiwidGVkIjoiZGVmYXVsdCJ9.HDaoynqt_LUiMKJF9Xjrie6OAft34mUriKoS6uyO6bXw-WlEY_Ot92fzmQM9B3c4WiIONLYokMojqF0lyXdiRfbOv6_HSiZLSN5pTBPdoF3OvxOpuaJmZayBDDjs2Luo0xTCMeqwC4CNLs1qbxBCuEVEbb7wugFdEjpUEA4IuyHG_tzprFkCdC-DBwCUtHA6xsRzQrcWVX70YhVg4T_WklkB7L4mYd7koI4yo0OykAbfjyAP5iSd3pldLzvpe058oFIhgug_H253fW2IGY5euWDbOC2qtJK_0yTzetXie5fUWf5EIuLKHLV76Yv45CsKvgdon3RYWik0EY3iSUOlKQ
+    ForcePush = true
+    ServerAddress = default.registry.tke-syyx.com
+  
+
+  kubeconfig.yaml: |
+    clusters:
+      - name: 新内网集群
+        cluster:
+          server: https://10.100.16.60:6443
+          certificate-authority-data: >-
+            LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUJlakNDQVIrZ0F3SUJBZ0lCQURBS0JnZ3Foa2pPUFFRREFqQWtNU0l3SUFZRFZRUUREQmx5YTJVeUxYTmwKY25abGNpMWpZVUF4TnpBMk1qTXlPVGd3TUI0WERUSTBNREV5TmpBeE16WXlNRm9YRFRNME1ERXlNekF4TXpZeQpNRm93SkRFaU1DQUdBMVVFQXd3WmNtdGxNaTF6WlhKMlpYSXRZMkZBTVRjd05qSXpNams0TURCWk1CTUdCeXFHClNNNDlBZ0VHQ0NxR1NNNDlBd0VIQTBJQUJQcm9VNm53aUlmVXRPQys0bkpBVXJBQ1NkY3c5RXBzSW91ejR5cFEKSTBESmtIYVJ1WmxJWmNSSDN2T2hkR0dhaEROcHNwNkJUeFRBRkR1b0Myb09qU0NqUWpCQU1BNEdBMVVkRHdFQgovd1FFQXdJQ3BEQVBCZ05WSFJNQkFmOEVCVEFEQVFIL01CMEdBMVVkRGdRV0JCUnZPWmlyMXlZbzBURVlzbVpFCmtZd0hSVUJtbWpBS0JnZ3Foa2pPUFFRREFnTkpBREJHQWlFQWtOM0ltUFhkdDhVcGtFZUhzVjRBV0RRSTFKeDIKSjNQOWsxZHZVSCsrNGFvQ0lRRFJ2ZzRObjQzNjBueVdGVjZpckpEczduajQrS0tVU0l6SDJ2Y2hWelN5UHc9PQotLS0tLUVORCBDRVJUSUZJQ0FURS0tLS0tCg==
+    users:
+      - name: crawler-platform-ehijoy-admin
+        user:
+          token: >-
+            eyJhbGciOiJSUzI1NiIsImtpZCI6InBoS3NVMGhJVGh5bUV0RlhIbFhrNzlhU0pPRS0zTG14cEs2TklDS1J2eGcifQ.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJjcmF3bGVyLXBsYXRmb3JtLWVoaWpveSIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VjcmV0Lm5hbWUiOiJjcmF3bGVyLXBsYXRmb3JtLWVoaWpveS1hZG1pbi10b2tlbiIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VydmljZS1hY2NvdW50Lm5hbWUiOiJjcmF3bGVyLXBsYXRmb3JtLWVoaWpveS1hZG1pbiIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VydmljZS1hY2NvdW50LnVpZCI6IjJiYmRiMjRmLTBkMTgtNDhkOC05MWViLTZiNGM3ZjY5N2FlNSIsInN1YiI6InN5c3RlbTpzZXJ2aWNlYWNjb3VudDpjcmF3bGVyLXBsYXRmb3JtLWVoaWpveTpjcmF3bGVyLXBsYXRmb3JtLWVoaWpveS1hZG1pbiJ9.ilSu0XSOWYX5Prwla1iTmupHuIbUn7vuL9nHZfStcdKCWT-3lvMn0Yb-36Zery2Om1Xpf4bbMIC64RraBQMJlPB2_lqlMZforqRwEJ238-e5NX7eUyaLwdDK_Le1Z4BfYMZTgj5WIaHJD7jCalsLThvHMqjnMMr2t-dw-pFw7ZGsgsIJhH1F2q5Rvf4_pPhjtkMiDXSlT14syENbwGR50T0j3ZHHqDaWOIw2tfNQtZFYS7gAwcsmxnhjb0CB2ITgoZlMhKVJnjnee_ley1M6HEx5UMX65O4fGHb_2Jt85BGpUS9OcdpJXHHLQ3fIzhvDgyYp4T6sGs559mDxt9kBQg
+    contexts:
+      - name: 新内网集群-crawler-platform-ehijoy-admin
+        context:
+          user: crawler-platform-ehijoy-admin
+          cluster: 新内网集群
+          namespace: crawler-platform-ehijoy

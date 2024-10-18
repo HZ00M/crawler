@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: crawler-deployment
+  namespace: crawler-platform-ehijoy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: crawler
+  template:
+    metadata:
+      labels:
+        app: crawler
+    spec:
+      serviceAccountName: crawler-platform-ehijoy-admin  # 指定你的服务账户
+      containers:
+        - name: crawler
+          image: default.registry.tke-syyx.com/syyx-tpf/crawler:1.0.7
+          ports:
+            - containerPort: 8000
+          volumeMounts:
+            - name: crawler-configmap
+              mountPath: /app/conf  # 将整个 conf 目录挂载为只读
+              readOnly: true
+          resources:
+            requests:
+              memory: "1024Mi"
+              cpu: "1000m"
+            limits:
+              memory: "1024Mi"
+              cpu: "1000m"
+      volumes:
+        - name: crawler-configmap
+          configMap:
+            name: crawler-configmap   # 引用你创建的 ConfigMap 的名称

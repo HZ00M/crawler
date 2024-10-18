@@ -5,10 +5,11 @@ metadata:
   namespace: xxx-namespace
   labels:
     app: crawler
+    app-group: crawler-app
 spec:
   completions: 1      # 需要完成的 Pod 数量
   parallelism: 1      # 并发运行的 Pod 数量
-  ttlSecondsAfterFinished: 86400  # Job 完成后保留1小时
+  ttlSecondsAfterFinished: 86400  # Job 完成后保留1天
   completionMode: Indexed  # 开启 Indexed Job 模式
   backoffLimit: 4
   template:
@@ -20,6 +21,13 @@ spec:
         imagePullPolicy: IfNotPresent
         command: ["./your-execute-cmd"] # 替换为你的 Go 可执行文件
         args: ["arg1", "arg2"] # 替换为你的命令行参数，如果有的话
+        resources:
+          limits:
+            cpu: "1"
+            memory: "1Gi"
+          requests:
+            cpu: "100m"
+            memory: "500Mi"
         env:
         - name: JOB_COMPLETION_INDEX
           valueFrom:

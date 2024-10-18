@@ -1,5 +1,5 @@
 # 使用官方 Debian 镜像作为构建阶段
-FROM debian:buster-slim AS builder
+FROM default.registry.tke-syyx.com/om/debian:buster-slim AS builder
 
 # 更换为阿里云的源
 RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/' /etc/apt/sources.list \
@@ -34,7 +34,7 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -installsuffix cgo -o myapp .
 
 # 使用一个更小的基础镜像（Debian）
-FROM debian:buster-slim
+FROM default.registry.tke-syyx.com/om/debian:buster-slim
 
 # 安装必要的证书
 RUN apt-get update && apt-get install -y ca-certificates --no-install-recommends && rm -rf /var/lib/apt/lists/*
@@ -44,7 +44,8 @@ WORKDIR /app
 
 # 复制构建的二进制文件到该镜像
 COPY --from=builder /app/myapp .
-COPY --from=builder /app/conf ./conf
+# 配置通过configmap挂载
+#COPY --from=builder /app/conf ./conf
 COPY --from=builder /app/plugins ./plugins
 # 运行二进制文件
 CMD ["./myapp"]

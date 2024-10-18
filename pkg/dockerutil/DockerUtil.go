@@ -28,6 +28,12 @@ var (
 )
 
 func Setup() {
+	defer func() {
+		if r := recover(); r != nil {
+			logging.Info("Panic in init: %v", r)
+			// 进行适当的处理，比如日志记录或其他恢复操作
+		}
+	}()
 	var err error
 	localClient, auth_string, err = NewDockerClient()
 	if err != nil {
@@ -57,11 +63,11 @@ func NewDockerClient() (*client.Client, string, error) {
 		ServerAddress: setting.DockerSetting.ServerAddress,
 	}
 
-	var str = fmt.Sprintf(`{"username":"%s","password":"%s"}`,
-		authConfig.Username, authConfig.Password)
+	//var str = fmt.Sprintf(`{"username":"%s","password":"%s"}`,
+	//	authConfig.Username, authConfig.Password)
 	// // 编码认证信息
-	// var str = fmt.Sprintf(`{"username":"%s","password":"%s","serveraddress":"%s"}`,
-	// 	authConfig.Username, authConfig.Password, authConfig.ServerAddress)
+	var str = fmt.Sprintf(`{"username":"%s","password":"%s","serveraddress":"%s"}`,
+		authConfig.Username, authConfig.Password, authConfig.ServerAddress)
 	logging.Info("NewDockerClient authstr %v", str)
 	authString := base64.URLEncoding.EncodeToString([]byte(str))
 	return cli, authString, nil

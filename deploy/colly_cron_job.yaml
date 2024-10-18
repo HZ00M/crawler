@@ -1,13 +1,11 @@
 apiVersion: batch/v1 #k8s版本需1.20以上
 kind: CronJob
 metadata:
-  name: crawler-app-ssssss 
-  namespace: yh-crawler 
+  name: crawler-app-ssssss
+  namespace: yh-crawler
   labels:
     app: crawler
     app-group: crawler-app
-    execute-id: "77"
-    job-group: crawler-app-ssssss
 spec:
   schedule: '*/5 * * * *'  # 每五分钟执行一次
   startingDeadlineSeconds: 60  # Job 触发的最后期限
@@ -16,7 +14,8 @@ spec:
   failedJobsHistoryLimit: 1  # 保留1个失败的Job历史记录
   jobTemplate:
     spec:
-      ttlSecondsAfterFinished: 60
+      ttlSecondsAfterFinished: 86400  # Job 完成后保留1天
+      completionMode: Indexed  # 开启 Indexed Job 模式 默认false
       parallelism: 1  # 设置并行执行的 Job 数量
       completions: 1  # 完成任务的总数
       template:
@@ -27,6 +26,13 @@ spec:
           containers:
           - name: crawler-app
             image: default.registry.tke-syyx.com/syyx-tpf/colly:2.4
+            resources:
+              limits:
+                cpu: "1"
+                memory: "1Gi"
+              requests:
+                cpu: "100m"
+                memory: "500Mi"
             command:
               - ./myapp
             args:
@@ -36,4 +42,9 @@ spec:
               - igore_word=屏蔽字列表
               - begin_time=1725963360
               - end_time=1725963367
+            env:
+              - name: JOB_COMPLETION_INDEX
+                valueFrom:
+                  fieldRef:
+                    fieldPath: metadata.annotations['batch.kubernetes.io/job-completion-index']
           restartPolicy: Never

@@ -1,9 +1,10 @@
 package service
 
 import (
-	"fmt"
 	"sync"
 	"time"
+
+	"syyx.com/crawler/pkg/logging"
 )
 
 // 定义一个包级别的 TickerManager 实例 (静态变量)
@@ -39,18 +40,19 @@ func (tm *TickerManager) StartTicker(id interface{}, intervalSecond int, timerFu
 	// 启动 goroutine 处理 ticker
 	go func(ticker *time.Ticker, id interface{}) {
 		for range ticker.C {
-			fmt.Printf("Ticker %s ticked\n", id)
+			logging.Info("execute ticker id %v", id)
 			timerFun()
 		}
 	}(tm.tickers[id], id)
 }
 
 // StopTicker 停止指定的 ticker
-func (tm *TickerManager) StopTicker(id interface{}) {
+func (tm *TickerManager) StopTicker(id interface{}, stopExec func()) {
 	tm.mu.Lock()
 	defer tm.mu.Unlock()
-
+	stopExec()
 	if ticker, exists := tm.tickers[id]; exists {
+		logging.Info("remove ticker id %v", id)
 		ticker.Stop()
 		delete(tm.tickers, id)
 	}

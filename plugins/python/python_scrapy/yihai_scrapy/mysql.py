@@ -9,7 +9,7 @@ class scrapy_sql:
             dbname="crawler",
             user="postgres",
             password="123456",
-            host="10.100.0.220",
+            host="postgres",
             port=5432
         )
 

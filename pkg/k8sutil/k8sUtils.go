@@ -5,6 +5,10 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/Masterminds/semver/v3"
+
+	"k8s.io/apimachinery/pkg/version"
+
 	v1 "k8s.io/api/batch/v1"
 	v1beta1 "k8s.io/api/batch/v1beta1"
 	"k8s.io/client-go/kubernetes"
@@ -21,21 +25,29 @@ import (
 // *kubernetes.Clientset 是指向实例的指针
 
 var K8sClient *kubernetes.Clientset
+var K8sVersion *version.Info
 
 // var K8SJobClient batchv1.JobInterface
 
 func Setup() {
 	kubeCnf := setting.K8sSetting.KubeConfig
 	restConf, err := clientcmd.BuildConfigFromFlags("", kubeCnf)
+	logging.Debug("Starting kubeCnf \n%s \n restConf \n%v", kubeCnf, restConf)
 	if err != nil {
 		panic(err.Error())
+		//return fmt.Errorf("failed to create Kubernetes client: %w", err)
 	}
 	K8sClient, err = kubernetes.NewForConfig(restConf)
 	if err != nil {
 		panic(err.Error())
+		//return fmt.Errorf("failed to create Kubernetes client: %w", err)
 	}
-	// K8SJobClient = K8sClient.BatchV1().Jobs(setting.K8sSetting.Namespace)
-	logging.Info("k8sutil SETUP finish")
+	K8sVersion, err = K8sClient.Discovery().ServerVersion()
+	if err != nil {
+		logging.Error("failed to Discovery K8sVersion %v", err)
+	}
+	logging.Info("k8sutil Setup finish %v", K8sVersion)
+
 }
 
 // LoadJobFromYAML reads a YAML file and converts it into a Job object
@@ -53,6 +65,30 @@ func LoadJobFromYAML(pathName, fileName string) (*v1.Job, error) {
 	}
 
 	return &job, nil
+}
+
+func VersionLessThan(version string) bool {
+	currentVersion, err := semver.NewVersion(K8sVersion.GitVersion[1:]) // 去掉前面的 "v"
+	if err != nil {
+		logging.Error("Error parsing server version: %s", err.Error())
+	}
+	versionParsed, err := semver.NewVersion(version)
+	if err != nil {
+		logging.Error("Error parsing minimum version: %s", err.Error())
+	}
+	return currentVersion.LessThan(versionParsed) // 返回是否小于指定版本
+}
+
+func VersionGreaterThan(varsion string) bool {
+	currentVersion, err := semver.NewVersion(K8sVersion.GitVersion[1:]) // 去掉前面的 "v"
+	if err != nil {
+		logging.Error("Error parsing server version: %s", err.Error())
+	}
+	versionParsed, err := semver.NewVersion(varsion)
+	if err != nil {
+		logging.Error("Error parsing minimum version: %s", err.Error())
+	}
+	return currentVersion.GreaterThan(versionParsed) // 返回是否大于指定版本
 }
 
 func LoadCronFromYAML(pathName, fileName string) (*v1.CronJob, error) {
