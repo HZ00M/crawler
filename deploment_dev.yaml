@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: crawler
-          image: default.registry.tke-syyx.com/syyx-tpf/crawler:1.0.9
+          image: default.registry.tke-syyx.com/syyx-tpf/crawler:1.0.17
           ports:
             - containerPort: 8000
           volumeMounts:
