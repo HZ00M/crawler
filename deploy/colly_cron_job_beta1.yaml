@@ -28,7 +28,7 @@ spec:
             image: default.registry.tke-syyx.com/syyx-tpf/colly:2.4
             resources:
               limits:
-                cpu: "1"
+                cpu: "1000m"
                 memory: "1GB"
               requests:
                 cpu: "100m"

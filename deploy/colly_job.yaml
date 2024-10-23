@@ -23,7 +23,7 @@ spec:
         args: ["arg1", "arg2"] # 替换为你的命令行参数，如果有的话
         resources:
           limits:
-            cpu: "1"
+            cpu: "1000m"
             memory: "1GB"
           requests:
             cpu: "100m"
