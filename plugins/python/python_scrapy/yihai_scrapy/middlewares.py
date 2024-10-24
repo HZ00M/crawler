@@ -225,10 +225,12 @@ class TwistedMiddleware:
         self.start_time = time.time()
         self.spider = spider
         logging.info(f"req : {request.url}")
+        logging.info(f"spider.index : {spider.index}")
+        logging.info(f"request.meta: {request.meta}")
         if "req_index" in request.meta:
             try:
                 logging.info(f"self.index: {self.index}")
-                # print(request.meta["req_index"])
+                print(request.meta["req_index"])
                 self.index += 1
                 self.spider.not_req_list.pop(request.meta["req_index"])
             except:
@@ -237,7 +239,6 @@ class TwistedMiddleware:
         else:
             logging.info("正常情况，日志到不了这里，但是弱网情况，有小概率有bug，部分请求首次过来的时候，req_index参数丢了，但是其他参数又还在，重发参数又在了，就离谱")
             logging.info(request.url)
-            logging.info(request.meta)
             raise IgnoreRequest("请求已被取消")
 
 
