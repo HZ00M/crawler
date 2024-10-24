@@ -859,14 +859,18 @@ class BilibiliSpider(RedisSpider):
         url_info = response.meta["url_info"]
         oid = response.meta["oid"]
         # 每一页的评论内容
+        # print(data)
         for comment in data["list"]:
             # 获取评论内容
             comment_item = self.get_biligame_single_reply(comment, oid=oid)
             dt = datetime.strptime(comment_item['comment_time'], "%Y-%m-%d %H:%M:%S")
             # 转换为时间戳
             timestamp = int(time.mktime(dt.timetuple()))
-            if not self.check_time(timestamp):
+            if timestamp < self.end_time:
+                logging.info("超过开始时间，停止抓取")
                 return
+            # if not self.check_time(timestamp):
+            #     return
             logging.info("去拿用户信息")
             url = f"https://api.bilibili.com/x/web-interface/card?mid={comment_item['user_id']}&photo=true&web_location=333.788"
             req = scrapy.Request(url=url, callback=self.get_user_card,
