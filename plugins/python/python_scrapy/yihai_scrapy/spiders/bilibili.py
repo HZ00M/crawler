@@ -13,6 +13,9 @@ from yihai_scrapy.config import scrapy_config
 from yihai_scrapy.config import cookies
 from yihai_scrapy.config import url_config
 from datetime import datetime
+import logging
+from yihai_scrapy import logger
+import random
 
 # ---1 导入分布式爬虫类
 from scrapy_redis.spiders import RedisSpider
@@ -31,9 +34,12 @@ class BilibiliSpider(RedisSpider):
     # ---4 设置redis-key
     redis_key = "bilibili_key"
 
+    not_req_list = {}
+    req_index = 1
+
     def __init__(self, key_word="", execute_id=0, execute_name="", igore_word="", begin_time=0, end_time=0, *args,
                  **kwargs):
-        print(kwargs)
+        logging.info(kwargs)
         domain = kwargs.pop('domain', '')
         self.allowed_domains = list(filter(None, domain.split(',')))
         super(BilibiliSpider, self).__init__(*args, **kwargs)
@@ -61,15 +67,16 @@ class BilibiliSpider(RedisSpider):
             if config["video"]:
                 url_info = {"config": config}
                 if config["sort_type"] == "1":
-                    url_info["url"] = url_config["video"]["init_page"].format(keyword=key_word, page="1")
+                    url_info["url"] = url_config["video"]["init_page"].format(keyword=key_word, page="1", num=0)
                 elif config["sort_type"] == "2":
                     url_info["url"] = url_config["video"]["init_page"].format(keyword=key_word,
-                                                                              page="1") + "&order=pubdate"
+                                                                              page="1", num=0) + "&order=pubdate"
                 else:
-                    print(f"config sort_type error, keyword:{config['name']}")
+                    logging.info(f"config sort_type error, keyword:{config['name']}")
                     return
                 url_info["scrapy_type"] = "video"
                 url_info["page"] = 1
+                url_info["num"] = 0
                 self.start_urls.append(url_info)
             # 专栏
             if config["article"]:
@@ -81,7 +88,7 @@ class BilibiliSpider(RedisSpider):
                     url_info["url"] = url_info["url"] = url_config["article"]["init_page"].format(keyword=key_word,
                                                                                                   page="1") + "&order=pubdate"
                 else:
-                    print(f"config sort_type error, keyword:{config['name']}")
+                    logging.info(f"config sort_type error, keyword:{config['name']}")
                     return
                 url_info["scrapy_type"] = "article"
                 self.start_urls.append(url_info)
@@ -100,17 +107,20 @@ class BilibiliSpider(RedisSpider):
                 url_info["scrapy_type"] = "biliGame"
                 self.start_urls.append(url_info)
         else:
-            print("keyword not exist in config.py")
+            logging.info("keyword not exist in config.py")
 
     def start_requests(self):
-        print(self.start_urls)
+        logging.info(self.start_urls)
         for url_info in self.start_urls:
-            yield scrapy.Request(url=url_info["url"],
+            req = scrapy.Request(url=url_info["url"],
                                  callback=self.parse,
-                                 meta={'url_info': url_info},
+                                 meta={'url_info': url_info, "req_index": BilibiliSpider.req_index},
                                  # cookies=self.cookies
                                  # dont_filter=True
                                  )
+            BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
+            BilibiliSpider.req_index += 1
+            yield req
 
     # 总入口
     def parse(self, response):
@@ -118,16 +128,16 @@ class BilibiliSpider(RedisSpider):
         # with open('bilibili.html', 'w', encoding='utf-8') as f:
         #     f.write(response.text)
         #     f.close()
-        # print(response.body)
+        # logging.info(response.body)
         # 根据url_type,执行不同的操作
         url_info = response.meta["url_info"]
         url_type = url_info["scrapy_type"]
         config = url_info["config"]
-        print(f"url_type : {url_type}")
+        logging.info(f"url_type : {url_type}")
         # 视频
         if url_type == "video":
             item_lists = response.xpath(Page.video_list)
-            print(type(item_lists))
+            logging.info(type(item_lists))
             if item_lists:
                 item_list = []
                 for item in item_lists:
@@ -135,13 +145,16 @@ class BilibiliSpider(RedisSpider):
                     video_item['title'] = item.xpath(Page.video_title).extract_first()
                     video_item['record_ur'] = "https:" + item.xpath(Page.video_details).extract_first()
                     item_list.append(video_item)
-                yield scrapy.Request(url=item_list[0]['record_ur'], callback=self.get_video_details,
+                req = scrapy.Request(url=item_list[0]['record_ur'], callback=self.get_video_details,
                                      meta={'video_item': item_list[0], "item_list": item_list, "item_index": 1,
-                                           'url_info': url_info},
+                                           'url_info': url_info, "req_index": BilibiliSpider.req_index},
                                      # cookies=self.cookies,
                                      dont_filter=True)
+                BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
+                BilibiliSpider.req_index += 1
+                yield req
             else:
-                print("未定位到视频主页面信息")
+                logging.info("未定位到视频主页面信息")
         # 专栏的
         elif url_type == "article":
             # 获取专栏主页的
@@ -156,30 +169,37 @@ class BilibiliSpider(RedisSpider):
                     article_item["record_ur"] = url
                     article_item["target_obj_id"] = article_id
                     item_list.append(article_item)
-                yield scrapy.Request(url=item_list[0]['record_ur'], callback=self.get_article_details,
+                req = scrapy.Request(url=item_list[0]['record_ur'], callback=self.get_article_details,
                                      meta={'article_item': item_list[0], "item_list": item_list, "item_index": 1,
-                                           'url_info': url_info},
+                                           'url_info': url_info, "req_index": BilibiliSpider.req_index},
                                      # cookies=self.cookies,
                                      dont_filter=True)
+                BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
+                BilibiliSpider.req_index += 1
+                yield req
             else:
-                print("article_list is None")
+                logging.info("article_list is None")
         # 动态的
         elif url_type == "dynamic":
             url_info["url"] = url_config["dynamic"]["init_page"].format(offset="", host_mid=config['UID'])
             headers = {"referer": None}
-            print(self.cookies)
+            logging.info(self.cookies)
             # 这里不能走随机请求头，不然会判定失败（大部分随机请求头对这个接口来说有点老，但是其他接口没事）
-            yield scrapy.Request(url=url_info["url"],
+            req = scrapy.Request(url=url_info["url"],
                                  callback=self.get_dynamic_init_page,
-                                 meta={'url_info': url_info, "randomProxy": False},
+                                 meta={'url_info': url_info, "randomProxy": False,
+                                       "req_index": BilibiliSpider.req_index},
                                  cookies=self.cookies,
                                  dont_filter=True,
                                  # headers=headers
                                  )
+            BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
+            BilibiliSpider.req_index += 1
+            yield req
         elif url_type == "biliGame":
             resp_json = json.loads(response.body)
             if resp_json["code"] != 0:
-                print("get biliGame comment error")
+                logging.info("get biliGame comment error")
                 return
             biliGame_item = NeonScrapyItem()
             biliGame_item["data_type"] = "游戏中心"
@@ -197,7 +217,7 @@ class BilibiliSpider(RedisSpider):
             biliGame_item["ios_last_update"] = resp_json["data"]["ios_latest_update"]
             # 标签
             biliGame_item["tag"] = [tag["name"] for tag in resp_json["data"]["tag_list"]]
-            print("详情信息拿完，去拿评论数量和评分")
+            logging.info("详情信息拿完，去拿评论数量和评分")
             url = url_config["biliGame"]["summary_page"]
             request_id = Util.generate_random_string()
             ts = int(time.time() * 1000)
@@ -207,11 +227,15 @@ class BilibiliSpider(RedisSpider):
                                                                     ts=ts)
             sign = Util.biligame_comment_decryption(url_sign)
             url += url_sign + "&sign=" + sign
-            yield scrapy.Request(url=url, callback=self.get_biligame_summer,
-                                 meta={"biliGame_item": biliGame_item, "url_info": url_info},
+            req = scrapy.Request(url=url, callback=self.get_biligame_summer,
+                                 meta={"biliGame_item": biliGame_item, "url_info": url_info,
+                                       "req_index": BilibiliSpider.req_index},
                                  dont_filter=True)
+            BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
+            BilibiliSpider.req_index += 1
+            yield req
         else:
-            print(f"url type error,type:{url_type}")
+            logging.info(f"url type error,type:{url_type}")
 
     # 获取视频详情界面（播放界面）
     def get_video_details(self, response):
@@ -232,28 +256,41 @@ class BilibiliSpider(RedisSpider):
         timestamp = int(time.mktime(dt.timetuple()))
         # if not self.check_time(timestamp):
         if timestamp < self.start_time:
-            print(f"发布时间：{timestamp} out of range start_time:{self.start_time},end_time:{self.end_time}")
+            logging.info(f"发布时间：{timestamp} out of range start_time:{self.start_time},end_time:{self.end_time}")
             return
         # 发布时间满足筛选需求，就继续去遍历下一个视频
         if len(item_list) > item_index:
-            print("next video")
+            logging.info("next video")
             next_video_item = item_list[item_index]
-            yield scrapy.Request(url=next_video_item['record_ur'], callback=self.get_video_details,
+            logging.info(len(item_list))
+            logging.info(next_video_item['record_ur'])
+            req = scrapy.Request(url=next_video_item['record_ur'], callback=self.get_video_details,
                                  meta={'video_item': next_video_item, "item_list": item_list, 'url_info': url_info,
-                                       "item_index": item_index + 1},
+                                       "item_index": item_index + 1, "req_index": BilibiliSpider.req_index},
                                  # cookies=self.cookies,
                                  dont_filter=True)
+            BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
+            BilibiliSpider.req_index += 1
+            yield req
         # 如果没有下一页，则去拿
         else:
-            print("next page")
-            url_info["url"] = url_info["url"].replace(f"page={url_info['page']}", f"page={url_info['page'] + 1}")
-            yield scrapy.Request(url=url_info["url"],
+            logging.info("next page")
+            url_info["url"] = url_info["url"].replace(f"page={url_info['page']}",
+                                                      f"page={url_info['page'] + 1}").replace(f"&o={url_info['num']}",
+                                                                                              f"&o={url_info['num'] + len(item_list)}")
+            url_info['page'] += 1
+            url_info["num"] += len(item_list)
+            req = scrapy.Request(url=url_info["url"],
                                  callback=self.parse,
-                                 meta={'url_info': url_info},
+                                 meta={'url_info': url_info,
+                                       "req_index": BilibiliSpider.req_index},
                                  # cookies=self.cookies
                                  )
+            BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
+            BilibiliSpider.req_index += 1
+            yield req
         if timestamp > self.end_time:
-            print(f"发布时间：{timestamp} out of range start_time:{self.start_time},end_time:{self.end_time}")
+            logging.info(f"发布时间：{timestamp} out of range start_time:{self.start_time},end_time:{self.end_time}")
             return
         # yield video_item
         # return
@@ -290,15 +327,18 @@ class BilibiliSpider(RedisSpider):
             oid = matches[0]
             video_item["target_obj_id"] = oid
             url = f"https://api.bilibili.com/x/web-interface/card?mid={video_item['user_id']}&photo=true&web_location=333.788"
-            yield scrapy.Request(url=url, callback=self.get_user_card, meta={'item': video_item},
+            req = scrapy.Request(url=url, callback=self.get_user_card,
+                                 meta={'item': video_item, "req_index": BilibiliSpider.req_index},
                                  dont_filter=True)
-            # yield video_item
+            BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
+            BilibiliSpider.req_index += 1
+            yield req
         else:
-            print("未找到 oid")
+            logging.info("未找到 oid")
             yield video_item
             return
 
-        print(f"------------------- 视频{oid}详情页抓完了，开始抓评论 ------------------------")
+        logging.info(f"------------------- 视频{oid}详情页抓完了，开始抓评论 ------------------------")
 
         # 构造首页页签参数pagination_str
         first_page_pagination_str = {"offset": ""}
@@ -317,10 +357,14 @@ class BilibiliSpider(RedisSpider):
         ]
         w_rid = Util.comment_decryption("&".join(temp))
         url = "https://api.bilibili.com/x/v2/reply/wbi/main?" + "&".join(temp) + f"&w_rid={w_rid}"
-        yield scrapy.Request(url=url, callback=self.get_video_comment,
-                             meta={'oid': oid, 'first_page': True, "type": 1, "randomProxy": False, },
+        req = scrapy.Request(url=url, callback=self.get_video_comment,
+                             meta={'oid': oid, 'first_page': True, "type": 1, "randomProxy": False,
+                                   "req_index": BilibiliSpider.req_index},
                              cookies=self.cookies,
                              dont_filter=True)
+        BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
+        BilibiliSpider.req_index += 1
+        yield req
 
     # 获取视频评论
     def get_video_comment(self, response):
@@ -330,7 +374,7 @@ class BilibiliSpider(RedisSpider):
         comment_type = response.meta["type"]
         resp_json = json.loads(response.body)
         if resp_json["code"] != 0:
-            print("get video comment error")
+            logging.info("get video comment error")
             return
         data = resp_json["data"]
 
@@ -343,7 +387,7 @@ class BilibiliSpider(RedisSpider):
                 yield self.get_single_reply(reply, reply_type="置顶评论", oid=response.meta['oid'])
                 top_sub_reply_num = int(reply["rcount"])
                 if top_sub_reply_num > 0:
-                    print("调接口开始拿子评论")
+                    logging.info("调接口开始拿子评论")
                     # 每次拿10个
                     pn = 1
                     while top_sub_reply_num > 0:
@@ -356,11 +400,14 @@ class BilibiliSpider(RedisSpider):
                             "web_location=333.788",
                         ]
                         url = "https://api.bilibili.com/x/v2/reply/reply?" + "&".join(temp)
-                        print("开始抓子评论下一页")
-                        yield scrapy.Request(url=url, callback=self.get_sub_video_comment,
-                                             meta={"oid": response.meta['oid']},
+                        logging.info("开始抓子评论下一页")
+                        req = scrapy.Request(url=url, callback=self.get_sub_video_comment,
+                                             meta={"oid": response.meta['oid'], "req_index": BilibiliSpider.req_index},
                                              cookies=self.cookies,
                                              dont_filter=True)
+                        BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
+                        BilibiliSpider.req_index += 1
+                        yield req
                         pn += 1
                         top_sub_reply_num -= 10
                 # 没有回复就不管了
@@ -379,7 +426,7 @@ class BilibiliSpider(RedisSpider):
                 #         yield self.get_single_reply(sub_reply, reply_type="子评论")
                 # 如果评论大于3个，要额外调接口去拿
                 if sub_reply_num > 0:
-                    print("调接口开始拿子评论")
+                    logging.info("调接口开始拿子评论")
                     # 每次拿10个
                     pn = 1
                     while sub_reply_num > 0:
@@ -392,11 +439,14 @@ class BilibiliSpider(RedisSpider):
                             "web_location=333.788",
                         ]
                         url = "https://api.bilibili.com/x/v2/reply/reply?" + "&".join(temp)
-                        print("开始抓子评论下一页")
-                        yield scrapy.Request(url=url, callback=self.get_sub_video_comment,
-                                             meta={"oid": response.meta['oid']},
+                        logging.info("开始抓子评论下一页")
+                        req = scrapy.Request(url=url, callback=self.get_sub_video_comment,
+                                             meta={"oid": response.meta['oid'], "req_index": BilibiliSpider.req_index},
                                              cookies=self.cookies,
                                              dont_filter=True)
+                        BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
+                        BilibiliSpider.req_index += 1
+                        yield req
                         pn += 1
                         sub_reply_num -= 10
                 # 没有回复就不管了
@@ -410,11 +460,11 @@ class BilibiliSpider(RedisSpider):
         else:
             next_offset = None
         if not next_offset:
-            print("no next page return")
+            logging.info("no next page return")
             return
         else:
             offset = Util.pagination_str({"offset": next_offset})
-            print(offset)
+            logging.info(offset)
             oid = response.meta['oid']
             wts = int(time.time())
             temp = [
@@ -429,15 +479,19 @@ class BilibiliSpider(RedisSpider):
             ]
             w_rid = Util.comment_decryption("&".join(temp))
             url = "https://api.bilibili.com/x/v2/reply/wbi/main?" + "&".join(temp) + f"&w_rid={w_rid}"
-            print("开始抓评论下一页")
-            yield scrapy.Request(url=url, callback=self.get_video_comment,
-                                 meta={'oid': oid, 'first_page': False, "type": comment_type, "randomProxy": False},
+            logging.info("开始抓评论下一页")
+            req = scrapy.Request(url=url, callback=self.get_video_comment,
+                                 meta={'oid': oid, 'first_page': False, "type": comment_type, "randomProxy": False,
+                                       "req_index": BilibiliSpider.req_index},
                                  cookies=self.cookies,
                                  dont_filter=True)
+            BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
+            BilibiliSpider.req_index += 1
+            yield req
 
     # 获取单个评论
     def get_single_reply(self, comment, reply_type="评论", oid=""):
-        print("----------拿评论ing-----------")
+        logging.info("----------拿评论ing-----------")
         comment_item = NeonScrapyItem()
         # 类型是评论
         comment_item["data_type"] = reply_type
@@ -456,17 +510,24 @@ class BilibiliSpider(RedisSpider):
         # 去主页拿评论人的信息
         # 评论人mid
         comment_item["user_id"] = comment["member"]["mid"]
-        print("去拿用户信息")
+        logging.info("去拿用户信息")
         url = f"https://api.bilibili.com/x/web-interface/card?mid={comment_item['user_id']}&photo=true&web_location=333.788"
-        return scrapy.Request(url=url, callback=self.get_user_card, meta={'item': comment_item},
-                              dont_filter=True)
+        req_index = BilibiliSpider.req_index
+        BilibiliSpider.req_index += 1
+        req = scrapy.Request(url=url, callback=self.get_user_card,
+                             meta={'item': comment_item, "req_index": req_index},
+                             # meta={'item': comment_item},
+                             dont_filter=True)
+        BilibiliSpider.not_req_list[req_index] = req
+        # BilibiliSpider.req_index += 1
+        return req
 
     # 获取用户名片（评论人信息）
     def get_user_card(self, response):
         item = response.meta["item"]
         resp_json = json.loads(response.body)
         if resp_json["code"] != 0:
-            print("get user card error")
+            logging.info("get user card error")
             return
         data = resp_json["data"]
         # 用户等级
@@ -489,7 +550,7 @@ class BilibiliSpider(RedisSpider):
     def get_sub_video_comment(self, response):
         resp_json = json.loads(response.body)
         if resp_json["code"] != 0:
-            print("get user card error")
+            logging.info("get user card error")
             return
         data = resp_json["data"]
         if data["replies"]:
@@ -512,29 +573,36 @@ class BilibiliSpider(RedisSpider):
             # 专栏发布时间
             article_item["msg_time"] = article_html_json["readInfo"]["publish_time"]
             if not self.check_time(int(article_item["msg_time"])):
-                print(
+                logging.info(
                     f"发布时间：{article_item['msg_time']} out of range start_time:{self.start_time},end_time:{self.end_time}")
                 return
                 # 发布时间满足筛选需求，就继续去遍历下一个专栏
             if len(item_list) > item_index:
-                print("next article")
+                logging.info("next article")
                 next_video_item = item_list[item_index]
-                yield scrapy.Request(url=next_video_item['record_ur'], callback=self.get_article_details,
+                req = scrapy.Request(url=next_video_item['record_ur'], callback=self.get_article_details,
                                      meta={'article_item': next_video_item, "item_list": item_list,
                                            'url_info': url_info,
-                                           "item_index": item_index + 1},
+                                           "item_index": item_index + 1, "req_index": BilibiliSpider.req_index},
                                      # cookies=self.cookies,
                                      dont_filter=True)
+                BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
+                BilibiliSpider.req_index += 1
+                yield req
             # 如果没有下一页，则去拿
             else:
-                print("next page")
+                logging.info("next page")
                 url_info["url"] = url_info["url"].replace(f"page={url_info['page']}",
                                                           f"page={url_info['page'] + 1}")
-                yield scrapy.Request(url=url_info["url"],
+                url_info['page'] += 1
+                req = scrapy.Request(url=url_info["url"],
                                      callback=self.parse,
-                                     meta={'url_info': url_info},
+                                     meta={'url_info': url_info, "req_index": BilibiliSpider.req_index},
                                      # cookies=self.cookies
                                      )
+                BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
+                BilibiliSpider.req_index += 1
+                yield req
 
             # 专栏标题
             article_item["data_type"] = article_html_json["readInfo"]["title"]
@@ -559,9 +627,13 @@ class BilibiliSpider(RedisSpider):
             # 专栏up主用户id
             article_item["user_id"] = article_html_json["readInfo"]["author"]["mid"]
             url = f"https://api.bilibili.com/x/web-interface/card?mid={article_item['user_id']}&photo=true&web_location=333.788"
-            yield scrapy.Request(url=url, callback=self.get_user_card, meta={'item': article_item},
+            req = scrapy.Request(url=url, callback=self.get_user_card,
+                                 meta={'item': article_item, "req_index": BilibiliSpider.req_index},
                                  dont_filter=True)
-            print("专栏界面基础信息拿完，开始拿评论")
+            BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
+            BilibiliSpider.req_index += 1
+            yield req
+            logging.info("专栏界面基础信息拿完，开始拿评论")
             first_page_pagination_str = {"offset": ""}
             pagination_str = Util.pagination_str(first_page_pagination_str)
             # 构造时间戳
@@ -578,13 +650,17 @@ class BilibiliSpider(RedisSpider):
             ]
             w_rid = Util.comment_decryption("&".join(temp))
             url = "https://api.bilibili.com/x/v2/reply/wbi/main?" + "&".join(temp) + f"&w_rid={w_rid}"
-            print(url)
-            yield scrapy.Request(url=url, callback=self.get_video_comment,
-                                 meta={'oid': article_item['视频id'], 'first_page': True, "type": 12},
+            logging.info(url)
+            req = scrapy.Request(url=url, callback=self.get_video_comment,
+                                 meta={'oid': article_item['视频id'], 'first_page': True, "type": 12,
+                                       "req_index": BilibiliSpider.req_index},
                                  cookies=self.cookies,
                                  dont_filter=True)
+            BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
+            BilibiliSpider.req_index += 1
+            yield req
         else:
-            print("article_html_json is None")
+            logging.info("article_html_json is None")
         # # 发布时间
         # article_item['发布时间'] = response.xpath(Page.posted_time).extract_first()
 
@@ -597,7 +673,7 @@ class BilibiliSpider(RedisSpider):
                 return id_list
             return None
         else:
-            print("正则提取页面数据失败")
+            logging.info("正则提取页面数据失败")
             return None
 
     def get_dynamic_init_page(self, response):
@@ -605,21 +681,25 @@ class BilibiliSpider(RedisSpider):
         config = response.meta["url_info"]["config"]
         resp_json = json.loads(response.body)
         if resp_json["code"] != 0:
-            print(resp_json)
-            print("get dynamic comment error")
+            logging.info(resp_json)
+            logging.info("get dynamic comment error")
             return
         # 动态的数据，在主界面就能全拿完，拿完直接去拿评论
         for dynamic_info in resp_json["data"]["items"]:
             dynamic_item = self.get_dynamic_details(dynamic_info, url_info["UID"])
             # 如果不满足条件，直接就结束循环
             if not self.check_time(int(dynamic_item["msg_time"])):
-                print(
+                logging.info(
                     f"发布时间：{dynamic_item['msg_time']} out of range start_time:{self.start_time},end_time:{self.end_time}")
                 return
             url = f"https://api.bilibili.com/x/web-interface/card?mid={dynamic_item['user_id']}&photo=true&web_location=333.788"
-            yield scrapy.Request(url=url, callback=self.get_user_card, meta={'item': dynamic_item},
+            req = scrapy.Request(url=url, callback=self.get_user_card,
+                                 meta={'item': dynamic_item, "req_index": BilibiliSpider.req_index},
                                  dont_filter=True)
-            print("开始抓评论")
+            BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
+            BilibiliSpider.req_index += 1
+            yield req
+            logging.info("开始抓评论")
             oid = dynamic_item["target_obj_id"]
             dynamic_type = dynamic_info["basic"]["comment_type"]
             first_page_pagination_str = {"offset": ""}
@@ -638,23 +718,31 @@ class BilibiliSpider(RedisSpider):
             ]
             w_rid = Util.comment_decryption("&".join(temp))
             url = "https://api.bilibili.com/x/v2/reply/wbi/main?" + "&".join(temp) + f"&w_rid={w_rid}"
-            print(url)
-            yield scrapy.Request(url=url, callback=self.get_video_comment,
-                                 meta={'oid': oid, 'first_page': True, "type": dynamic_type},
+            logging.info(url)
+            req = scrapy.Request(url=url, callback=self.get_video_comment,
+                                 meta={'oid': oid, 'first_page': True, "type": dynamic_type,
+                                       "req_index": BilibiliSpider.req_index},
                                  cookies=self.cookies,
                                  dont_filter=True)
+            BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
+            BilibiliSpider.req_index += 1
+            yield req
         if "offset" in resp_json["data"]:
-            print("开始下一页")
+            logging.info("开始下一页")
             offset = resp_json["data"]["offset"]
             url_info["url"] = url_config["dynamic"]["init_page"].format(offset=offset, host_mid=config['UID'])
             headers = {"referer": None}
-            yield scrapy.Request(url=url_info["url"],
+            req = scrapy.Request(url=url_info["url"],
                                  callback=self.get_dynamic_init_page,
-                                 meta={'url_info': url_info, "randomProxy": False},
+                                 meta={'url_info': url_info, "randomProxy": False,
+                                       "req_index": BilibiliSpider.req_index},
                                  cookies=self.cookies,
                                  dont_filter=True,
                                  headers=headers
                                  )
+            BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
+            BilibiliSpider.req_index += 1
+            yield req
 
     # 处理动态详情界面
     def get_dynamic_details(self, dynamic_info, uid):
@@ -705,7 +793,7 @@ class BilibiliSpider(RedisSpider):
     def get_biligame_summer(self, response):
         resp_json = json.loads(response.body)
         if resp_json["code"] != 0:
-            print("get biligame_summer error")
+            logging.info("get biligame_summer error")
             return
         biliGame_item = response.meta["biliGame_item"]
         # 游戏评分
@@ -713,15 +801,19 @@ class BilibiliSpider(RedisSpider):
         # 游戏评论数
         biliGame_item["comments_count"] = resp_json["data"]["comment_number"]
         url = url_config["biliGame"]["game_info"].format(id=response.meta["url_info"]["config"]["gameId"])
-        yield scrapy.Request(url=url, callback=self.get_biligame_gameinfo,
-                             meta={"biliGame_item": biliGame_item, "url_info": response.meta["url_info"]},
+        req = scrapy.Request(url=url, callback=self.get_biligame_gameinfo,
+                             meta={"biliGame_item": biliGame_item, "url_info": response.meta["url_info"],
+                                   "req_index": BilibiliSpider.req_index},
                              dont_filter=True)
+        BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
+        BilibiliSpider.req_index += 1
+        yield req
 
     # 获取游戏下载量，预约量
     def get_biligame_gameinfo(self, response):
         resp_json = json.loads(response.body)
         if resp_json["code"] != 0:
-            print("get biligame_gameinfo error")
+            logging.info("get biligame_gameinfo error")
             return
         biliGame_item = response.meta["biliGame_item"]
         oid = biliGame_item["target_obj_id"]
@@ -732,7 +824,7 @@ class BilibiliSpider(RedisSpider):
         if "book_num" in resp_json["data"]:
             biliGame_item["book_num"] = resp_json["data"]["book_num"]
         yield biliGame_item
-        print("游戏中心基础数据拿完了，开始拿评论")
+        logging.info("游戏中心基础数据拿完了，开始拿评论")
         comment_count = biliGame_item["comments_count"]
         url = url_config["biliGame"]["replay_page"]
         page_index = 1
@@ -747,17 +839,21 @@ class BilibiliSpider(RedisSpider):
                                                                  appkey=url_info["config"]["app_key"])
         sign = Util.biligame_comment_decryption(reply_sign)
         req_url = url + reply_sign + "&sign=" + sign
-        yield scrapy.Request(url=req_url, callback=self.get_biligime_comment,
+        req = scrapy.Request(url=req_url, callback=self.get_biligime_comment,
                              meta={"url_info": response.meta["url_info"],
-                                   "page_index": page_index, "comment_count": comment_count - 10, "oid": oid},
+                                   "page_index": page_index, "comment_count": comment_count - 10, "oid": oid,
+                                   "req_index": BilibiliSpider.req_index},
                              dont_filter=True)
+        BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
+        BilibiliSpider.req_index += 1
+        yield req
         # comment_count -= 1000
         # page_index += 1
 
     def get_biligime_comment(self, response):
         resp_json = json.loads(response.body)
         if resp_json["code"] != 0:
-            print("get biligime comment error")
+            logging.info("get biligime comment error")
             return
         data = resp_json["data"]
         url_info = response.meta["url_info"]
@@ -771,15 +867,19 @@ class BilibiliSpider(RedisSpider):
             timestamp = int(time.mktime(dt.timetuple()))
             if not self.check_time(timestamp):
                 return
-            print("去拿用户信息")
+            logging.info("去拿用户信息")
             url = f"https://api.bilibili.com/x/web-interface/card?mid={comment_item['user_id']}&photo=true&web_location=333.788"
-            yield scrapy.Request(url=url, callback=self.get_user_card, meta={'item': comment_item},
+            req = scrapy.Request(url=url, callback=self.get_user_card,
+                                 meta={'item': comment_item, "req_index": BilibiliSpider.req_index},
                                  dont_filter=True)
+            BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
+            BilibiliSpider.req_index += 1
+            yield req
             # 判断评论是否有子评论
             sub_reply_num = int(comment["reply_count"])
             comment_no = comment["comment_no"]
             # 如果子评论大于0，要额外调接口去拿
-            print("调接口开始拿子评论")
+            logging.info("调接口开始拿子评论")
             url = url_config["biliGame"]["sub_replay_page"]
             page_index = 1
             # 循环去拿，直到评论被拿完
@@ -793,10 +893,13 @@ class BilibiliSpider(RedisSpider):
                                                                              appkey=url_info["config"]["app_key"])
                 sign = Util.biligame_comment_decryption(reply_sign)
                 req_url = url + reply_sign + "&sign=" + sign
-                yield scrapy.Request(url=req_url, callback=self.get_sub_biligame_comment,
+                req = scrapy.Request(url=req_url, callback=self.get_sub_biligame_comment,
                                      meta={"url_info": response.meta["url_info"],
-                                           "page_index": page_index, "oid": oid},
+                                           "page_index": page_index, "oid": oid, "req_index": BilibiliSpider.req_index},
                                      dont_filter=True)
+                BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
+                BilibiliSpider.req_index += 1
+                yield req
                 sub_reply_num -= 10
                 page_index += 1
         page_index = response.meta["page_index"] + 1
@@ -811,13 +914,17 @@ class BilibiliSpider(RedisSpider):
                                                                      appkey=url_info["config"]["app_key"])
             sign = Util.biligame_comment_decryption(reply_sign)
             req_url = url + reply_sign + "&sign=" + sign
-            yield scrapy.Request(url=req_url, callback=self.get_biligime_comment,
+            req = scrapy.Request(url=req_url, callback=self.get_biligime_comment,
                                  meta={"url_info": response.meta["url_info"],
-                                       "page_index": page_index, "comment_count": comment_count - 10},
+                                       "page_index": page_index, "comment_count": comment_count - 10,
+                                       "req_index": BilibiliSpider.req_index},
                                  dont_filter=True)
+            BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
+            BilibiliSpider.req_index += 1
+            yield req
 
     def get_biligame_single_reply(self, comment, reply_type="评论", oid=""):
-        print("----------拿评论ing-----------")
+        logging.info("----------拿评论ing-----------")
         comment_item = NeonScrapyItem()
         # 类型是评论
         comment_item["data_type"] = reply_type
@@ -841,7 +948,7 @@ class BilibiliSpider(RedisSpider):
         # 评论人mid
         comment_item["user_id"] = comment["uid"]
         return comment_item
-        # print("去拿用户信息")
+        # logging.info("去拿用户信息")
         # url = f"https://api.bilibili.com/x/web-interface/card?mid={comment_item['user_id']}&photo=true&web_location=333.788"
         # return scrapy.Request(url=url, callback=self.get_user_card, meta={'item': comment_item},
         #                       dont_filter=True)
@@ -849,7 +956,7 @@ class BilibiliSpider(RedisSpider):
     def get_sub_biligame_comment(self, response):
         resp_json = json.loads(response.body)
         if resp_json["code"] != 0:
-            print("get sub biligame comment error")
+            logging.info("get sub biligame comment error")
             return
         data = resp_json["data"]
         if data["list"]:

@@ -2,13 +2,16 @@
 #
 # See documentation in:
 # https://docs.scrapy.org/en/latest/topics/spider-middleware.html
-
+import scrapy
+from requests import Request
 from scrapy import signals
 from yihai_scrapy.settings import USER_AGENT_List
 # from yihai_scrapy.settings import PROXY_LIST
 from yihai_scrapy.ip_proxy import IpProxy
 from scrapy.exceptions import IgnoreRequest
 from twisted.internet import reactor
+import logging
+from yihai_scrapy import logger
 import random
 import base64
 import time
@@ -119,11 +122,11 @@ class RandomProxy:
     # todo 现在这里是自己的ip写的，能跑就行，到时候换正式的随机ip，还要再改
     def process_request(self, request, spider):
         if "rerun" in request.meta:
-            print("重发中，重发中")
+            logging.info("重发中，重发中")
         # 不分请求不需要随机ip(主要需要随机的是高频次调用的，如访问用户名片)
         if "randomProxy" in request.meta:
             if not request.meta["randomProxy"]:
-                print("不需要随机")
+                logging.info("不需要随机")
                 return
         # 随机请求头
         ua = random.choice(USER_AGENT_List)
@@ -137,9 +140,10 @@ class RandomProxy:
         # 设置代理,如果传参的时候传了ip地址，就用传过来的，不然就走随机
         request.meta['proxy'] = 'http://' + proxy
 
+
     def process_response(self, request, response, spider):
         if response.status != 200:
-            print(f"Non-200 response {response.status} for URL: {response.url}")
+            logging.info(f"Non-200 response {response.status} for URL: {response.url}")
             # 可以在这里进行额外的处理，例如重试请求
             retries = request.meta.get('retries', 0)
             proxy = request.meta.get('proxy', "")
@@ -150,7 +154,7 @@ class RandomProxy:
                 new_request = request.copy()
                 IpProxy.del_proxy(proxy)
                 new_request.meta['retries'] = retries
-                print(f"retries the {retries}, max:{self.max_retry_times}")
+                logging.info(f"retries the {retries}, max:{self.max_retry_times}")
                 # 返回新的请求对象进行重试
                 return new_request
             else:
@@ -175,7 +179,7 @@ class RandomDelayMiddleware:
 
     def process_request(self, request, spider):
         delay = random.randint(self.delay_min, self.delay_max)
-        print(f"Waiting for {delay} seconds...")
+        logging.info(f"Waiting for {delay} seconds...")
         # 使用Python标准库中的time模块进行等待
         time.sleep(delay)
 
@@ -187,18 +191,53 @@ class TwistedMiddleware:
     def __init__(self):
         self.start_time = time.time()
         self.spider = None
+        self.index = 0
         reactor.callLater(5, self.myFunction)
 
     def myFunction(self):
         if time.time() - self.start_time > 120:
-            print("120s没有新消息，停止运行")
+            logging.info("120s没有新消息，停止运行")
             self.spider.crawler.engine.close_spider(self.spider, 'timeout')
+        elif time.time() - self.start_time > 30 and self.spider.not_req_list:
+            logging.info("add new req")
+            logging.info(len(self.spider.not_req_list))
+            remove_list = []
+            for req in self.spider.not_req_list:
+                self.spider.not_req_list[req].dont_filter=True
+                if "rerun" in self.spider.not_req_list[req].meta:
+                    self.spider.not_req_list[req].meta["rerun"] += 1
+                else:
+                    self.spider.not_req_list[req].meta["rerun"] = 1
+                if self.spider.not_req_list[req].meta["rerun"] > 3:
+                    remove_list.append(req)
+                    continue
+                logging.info(f"new req {self.spider.not_req_list[req].url}")
+                self.spider.crawler.engine.crawl(self.spider.not_req_list[req])
+            # 删除重复请求超过3次的请求，防止死循环
+            for req in remove_list:
+                self.spider.not_req_list.pop(req)
         else:
-            print(f"上一次请求时间:{int(time.time() - self.start_time)}s前")
+            logging.info(f"上一次请求时间:{int(time.time() - self.start_time)}s前")
         # 再次安排这个函数的调用
         reactor.callLater(10, self.myFunction)
 
     def process_request(self, request, spider):
         self.start_time = time.time()
         self.spider = spider
+        logging.info(f"req : {request.url}")
+        if "req_index" in request.meta:
+            try:
+                logging.info(f"self.index: {self.index}")
+                # print(request.meta["req_index"])
+                self.index += 1
+                self.spider.not_req_list.pop(request.meta["req_index"])
+            except:
+                logging.info("取消发送请求")
+                raise IgnoreRequest("请求已被取消")
+        else:
+            logging.info("正常情况，日志到不了这里，但是弱网情况，有小概率有bug，部分请求首次过来的时候，req_index参数丢了，但是其他参数又还在，重发参数又在了，就离谱")
+            logging.info(request.url)
+            logging.info(request.meta)
+            raise IgnoreRequest("请求已被取消")
+
 

@@ -18,7 +18,7 @@ class IpProxy:
     # proxy列表
     proxy_list = {}
     # 随机ip个数
-    ip_count = 1
+    ip_count = 5
 
     # 获取签名
     @staticmethod
