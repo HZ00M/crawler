@@ -225,7 +225,7 @@ class TwistedMiddleware:
         self.start_time = time.time()
         self.spider = spider
         logging.info(f"req : {request.url}")
-        logging.info(f"spider.index : {spider.index}")
+        logging.info(f"spider.index : {spider.req_index}")
         logging.info(f"request.meta: {request.meta}")
         if "req_index" in request.meta:
             try:
