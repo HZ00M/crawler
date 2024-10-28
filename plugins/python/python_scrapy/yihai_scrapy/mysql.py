@@ -96,7 +96,9 @@ class scrapy_sql:
                 cursor.execute(sql, list_values)
                 self.conn.commit()
         except Exception as e:
+            print(data_dict)
             print(f"sql insert error: {e}")
+            self.conn.rollback()
 
     def get_data(self):
         sql = f"SELECT * FROM t_job_record"
