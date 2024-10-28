@@ -11,7 +11,7 @@ from yihai_scrapy.ip_proxy import IpProxy
 from scrapy.exceptions import IgnoreRequest
 from twisted.internet import reactor
 import logging
-from yihai_scrapy import logger
+# from yihai_scrapy import logger
 import random
 import base64
 import time

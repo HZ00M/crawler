@@ -2,6 +2,8 @@ import os
 import sys
 import subprocess
 import time
+import logging
+from yihai_scrapy import logger
 
 
 def main():
@@ -10,10 +12,10 @@ def main():
     script_command = 'scrapy crawl '
     config_list = sys.argv[1:]
     if len(config_list) == 0:
-        print("缺少关键参数")
+        logging.error("缺少关键参数")
         return
     for run_type in config_list:
-        print(run_type)
+        logging.info(run_type)
         if "type=" in run_type :
             scrapy_name = run_type.split("=")[1]
             script_command += scrapy_name
@@ -23,7 +25,7 @@ def main():
     # config_list.pop(0)
     for config in config_list:
         script_command += " -a " + config
-    print(script_command)
+    logging.info(script_command)
 
     # if os.name == 'nt':
     #     # 虚拟环境启动文件

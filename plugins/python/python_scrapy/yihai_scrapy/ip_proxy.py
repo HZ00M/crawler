@@ -2,9 +2,9 @@ import random
 
 from yihai_scrapy import config
 import requests
+import logging
 import json
 import time
-
 
 class IpProxy:
     # 账号密码
@@ -31,13 +31,13 @@ class IpProxy:
         }
         result = requests.post(url=url, headers=headers, data=data)
         if result.status_code != 200:
-            print(f"get_secret_token Response status_code != 200, status_code:{result.status_code}")
+            logging.info(f"get_secret_token Response status_code != 200, status_code:{result.status_code}")
             return
         json_data = result.json()
         if json_data["code"] != 0:
-            print(f"get_secret_token code != 0, Response res_code:{json_data['code']}")
+            logging.info(f"get_secret_token code != 0, Response res_code:{json_data['code']}")
             return
-        print(f"get_secret_token success, data: {json_data}")
+        logging.info(f"get_secret_token success, data: {json_data}")
         # 使用secret_token直接当签名
         IpProxy.secret_token = json_data["data"]["secret_token"]
         not_time = int(time.time())
@@ -53,13 +53,13 @@ class IpProxy:
         url = f"https://dps.kdlapi.com/api/getdps?secret_id={IpProxy.secret_id}&num={num}&signature={IpProxy.secret_token}&format=json"
         result = requests.get(url=url)
         if result.status_code != 200:
-            print(f"getdps Response status_code != 200, status_code:{result.status_code}")
+            logging.info(f"getdps Response status_code != 200, status_code:{result.status_code}")
             return
         json_data = result.json()
         if json_data["code"] != 0:
-            print(f"getdps Response code != 0, res_code:{json_data['code']}")
+            logging.info(f"getdps Response code != 0, res_code:{json_data['code']}")
             return
-        print(f"get new_ip success, new_ip: {json_data}")
+        logging.info(f"get new_ip success, new_ip: {json_data}")
         for proxy in json_data["data"]["proxy_list"]:
             IpProxy.proxy_list[proxy] = 0
         # IpProxy.proxy_list.extend(json_data["data"]["proxy_list"])
@@ -76,18 +76,18 @@ class IpProxy:
             url = f"https://dps.kdlapi.com/api/getdpsvalidtime?secret_id={IpProxy.secret_id}&signature={IpProxy.secret_token}&proxy={proxy}"
             result = requests.get(url=url)
             if result.status_code != 200:
-                print(f"getdpsvalidtime Response status_code != 200, status_code:{result.status_code}")
+                logging.info(f"getdpsvalidtime Response status_code != 200, status_code:{result.status_code}")
                 return -1
             json_data = result.json()
             if json_data["code"] != 0:
-                print(f"getdpsvalidtime Response code != 0, res_code:{json_data['code']}")
+                logging.info(f"getdpsvalidtime Response code != 0, res_code:{json_data['code']}")
                 return -1
-            print(json_data["data"])
+            logging.info(json_data["data"])
             IpProxy.proxy_list[proxy] = (now_time + json_data["data"][proxy])
-            print(f"{proxy}:{IpProxy.proxy_list[proxy]},now_time:{now_time},111")
+            logging.info(f"{proxy}:{IpProxy.proxy_list[proxy]},now_time:{now_time},111")
             return json_data["data"][proxy]
         else:
-            print(f"{proxy}:{IpProxy.proxy_list[proxy]},now_time:{now_time},222")
+            logging.info(f"{proxy}:{IpProxy.proxy_list[proxy]},now_time:{now_time},222")
             return IpProxy.proxy_list[proxy] - now_time
 
     # 检测代理有效性
@@ -101,13 +101,13 @@ class IpProxy:
         url = f"https://dps.kdlapi.com/api/checkdpsvalid?secret_id={IpProxy.secret_id}&signature={IpProxy.secret_token}&proxy={proxy}"
         result = requests.get(url=url)
         if result.status_code != 200:
-            print(f"checkdpsvalid Response status_code != 200, status_code:{result.status_code}")
+            logging.info(f"checkdpsvalid Response status_code != 200, status_code:{result.status_code}")
             return False
         json_data = result.json()
         if json_data["code"] != 0:
-            print(f"checkdpsvalid Response code != 0, res_code:{json_data['code']}")
+            logging.info(f"checkdpsvalid Response code != 0, res_code:{json_data['code']}")
             return False
-        print(json_data["data"])
+        logging.info(json_data["data"])
         # IpProxy.proxy_list[proxy] = now_time + json_data["data"][proxy]
         return json_data["data"][proxy]
 
@@ -120,11 +120,11 @@ class IpProxy:
         url = f"https://dps.kdlapi.com/api/getipbalance?secret_id={IpProxy.secret_id}&signature={IpProxy.secret_token}"
         result = requests.get(url=url)
         if result.status_code != 200:
-            print(f"getipbalance Response status_code != 200, status_code:{result.status_code}")
+            logging.info(f"getipbalance Response status_code != 200, status_code:{result.status_code}")
             return -1
         json_data = result.json()
         if json_data["code"] != 0:
-            print(f"getipbalance Response code != 0, res_code:{json_data['code']}")
+            logging.info(f"getipbalance Response code != 0, res_code:{json_data['code']}")
             return -1
         return json_data["data"]["balance"]
 
@@ -139,17 +139,17 @@ class IpProxy:
             proxy = random.choice(list(IpProxy.proxy_list.keys()))
             # 2、判断这个ip剩余时间，是否大于30s,小于30s就换一个新的
             ip_expire = IpProxy.get_dps_valid_time(proxy)
-            print(f"proxy:{proxy} ip_expire:{ip_expire}")
+            logging.info(f"proxy:{proxy} ip_expire:{ip_expire}")
             if not IpProxy.check_dps_valid(proxy):
-                print(f"proxy:{proxy}不可用")
+                logging.info(f"proxy:{proxy}不可用")
                 IpProxy.proxy_list.pop(proxy)
             elif ip_expire < 0:
-                print(f"get {proxy} valid time error")
+                logging.info(f"get {proxy} valid time error")
                 return proxy
             elif ip_expire <= 30:
                 IpProxy.proxy_list.pop(proxy)
             else:
-                print(f"proxy: {proxy}")
+                logging.info(f"proxy: {proxy}")
                 break
         return proxy
 
@@ -159,7 +159,7 @@ class IpProxy:
         if proxy in IpProxy.proxy_list:
             IpProxy.proxy_list.pop(proxy)
         else:
-            print(f"{proxy} not in proxy_list")
+            logging.info(f"{proxy} not in proxy_list")
 
 
 if __name__ == '__main__':
