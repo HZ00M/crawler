@@ -87,3 +87,19 @@ data:
       - name: cls-mmhtkv54-admin
         user:
           token: 1r6LyTXUaqY4johIykjvWFTjK0o
+
+  deamon.json: |
+    {
+      "registry-mirrors": [
+        "https://wveb9fi0.mirror.aliyuncs.com",
+        "http://hub-mirror.c.163.com",
+        "https://registry.docker-cn.com"
+      ],
+      "insecure-registries": [
+        "10.100.3.2:2443",
+        "10.100.0.118",
+        "default.registry.tke-syyx.com"
+      ],
+      "debug": true,
+      "experimental": true
+    }

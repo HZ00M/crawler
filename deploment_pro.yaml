@@ -13,15 +13,30 @@ spec:
       labels:
         app: crawler
     spec:
-      serviceAccountName: crawler-platform-ehijoy-admin  # 指定你的服务账户
+      serviceAccountName: crawler-platform-ehijoy-admin  # 指定你的服务账户，以管理 Kubernetes API 的权限。
+      securityContext: # 这里是 Pod 的安全上下文 控制 Pod 或容器的安全属性（如用户、组、权限等）。
+        runAsUser: 0
+        runAsGroup: 0
+        fsGroup: 0
       containers:
         - name: crawler
-          image: default.registry.tke-syyx.com/syyx-tpf/crawler:1.0.18
+          image: default.registry.tke-syyx.com/syyx-tpf/crawler:1.0.27
+          securityContext:
+            privileged: true
           ports:
             - containerPort: 8000
           volumeMounts:
-            - name: crawler-configmap
-              mountPath: /app/conf  # 将整个 conf 目录挂载为只读
+            - name: config-volume
+              subPath: app.ini  # 指定 ConfigMap 中的文件名
+              mountPath: /app/conf/app.ini
+              readOnly: true
+            - name: config-volume
+              subPath: kubeconfig.yaml # 挂载 kubeconfig.yaml
+              mountPath: /app/conf/kubeconfig.yaml
+              readOnly: true
+            - name: config-volume
+              subPath: deamon.json  # 指定 ConfigMap 中的文件名
+              mountPath: /etc/docker/daemon.json
               readOnly: true
           resources:
             requests:
@@ -31,6 +46,6 @@ spec:
               memory: "1024Mi"
               cpu: "1000m"
       volumes:
-        - name: crawler-configmap
+        - name: config-volume
           configMap:
             name: crawler-configmap   # 引用你创建的 ConfigMap 的名称

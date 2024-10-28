@@ -16,7 +16,7 @@ type JobRecord struct {
 	KeyWord           string    `gorm:"type:varchar(255);column:key_word"`
 	ExecuteID         int       `gorm:"column:execute_id"`
 	WebSite           string    `gorm:"type:varchar(255);column:web_site"`
-	Content           string    `gorm:"type:varchar(255);column:content"`
+	Content           string    `gorm:"type:text;column:content"`
 	Label             string    `gorm:"type:varchar(255);column:label"`
 	Subject           string    `gorm:"type:varchar(255);column:subject"`
 	Author            string    `gorm:"type:varchar(255);column:author"`

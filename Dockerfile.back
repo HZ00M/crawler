@@ -1,13 +1,13 @@
 # 使用官方 Debian 镜像作为构建阶段
-FROM default.registry.tke-syyx.com/syyx-tpf/docker:20.10-dind AS builder
-RUN cat /etc/os-release
+FROM default.registry.tke-syyx.com/om/debian:buster-slim AS builder
+
 # 更换为阿里云的源
-RUN echo "" > /etc/apk/repositories && \
-    echo "https://mirrors.aliyun.com/alpine/v3.18/main" >> /etc/apk/repositories && \
-    echo "https://mirrors.aliyun.com/alpine/v3.18/community" >> /etc/apk/repositories
-RUN apk update && apk add --no-cache \
-    curl
-#    build-base
+RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/' /etc/apt/sources.list \
+    && apt-get update \
+    && apt-get install -y \
+       curl \
+       build-essential \
+    && rm -rf /var/lib/apt/lists/* 
 
 # 下载并安装 Go（使用阿里云开源镜像站）
 ENV GO_VERSION 1.22.5
@@ -34,13 +34,11 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -installsuffix cgo -o myapp .
 
 # 使用一个更小的基础镜像（Debian）
-FROM default.registry.tke-syyx.com/syyx-tpf/docker:20.10-dind
+FROM default.registry.tke-syyx.com/om/debian:buster-slim
 
 # 安装必要的证书
-RUN echo "" > /etc/apk/repositories && \
-    echo "https://mirrors.aliyun.com/alpine/v3.18/main" >> /etc/apk/repositories && \
-    echo "https://mirrors.aliyun.com/alpine/v3.18/community" >> /etc/apk/repositories
-RUN apk update && apk add --no-cache ca-certificates busybox-extras
+RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/' /etc/apt/sources.list \
+    && apt-get update && apt-get install -y ca-certificates --no-install-recommends && rm -rf /var/lib/apt/lists/*
 
 # 设置工作目录
 WORKDIR /app
@@ -51,5 +49,4 @@ COPY --from=builder /app/myapp .
 #COPY --from=builder /app/conf ./conf
 COPY --from=builder /app/plugins ./plugins
 # 运行二进制文件
-#CMD ["./myapp"]
-CMD ["sh", "-c", "dockerd-entrypoint.sh & ./myapp"]
+CMD ["./myapp"]

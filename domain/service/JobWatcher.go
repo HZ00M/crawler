@@ -3,16 +3,13 @@ package service
 import (
 	"context"
 	"strconv"
-	"sync"
 
 	"syyx.com/crawler/pkg/k8sutil"
 
 	batchv1 "k8s.io/api/batch/v1" // 这是 Kubernetes API 的 batchv1 包
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
-	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/cache"
 	"syyx.com/crawler/deploy"
 	"syyx.com/crawler/domain/entity"
 	"syyx.com/crawler/pkg/logging"
@@ -20,16 +17,40 @@ import (
 
 func watchEvent(clientset *kubernetes.Clientset, namespace string) {
 	logging.Info(" start watching namespace %s", namespace)
-	// 设置 ListOptions 来过滤只监听指定的 Job
+	go func() { watchJob(clientset, namespace, 0) }()
+	go func() { watchCronJob(clientset, namespace, 0) }()
+}
+func watchJob(clientset *kubernetes.Clientset, namespace string, retryCount int) {
+	retryCount++
+	if retryCount > 0 {
+		logging.Error("retry namespace %s retryCount %d", namespace, retryCount)
+	}
 	options := metav1.ListOptions{
 		LabelSelector: "app=crawler",
 	}
+	var err error
 	// 通过 clientset 的 BatchV1() 客户端获取 Job 的 Watcher
 	jobWatcher, err := clientset.BatchV1().Jobs(namespace).Watch(context.TODO(), options)
 	if err != nil {
 		logging.Error("do Jobs Watch error namespace %s err %v", namespace, err)
 		return
 	}
+	defer func() {
+		logging.Error("stop watching jobWatcher namespace %s", namespace)
+		jobWatcher.Stop()
+		watchJob(clientset, namespace, retryCount)
+	}()
+	handlerJobEvens(jobWatcher.ResultChan())
+}
+func watchCronJob(clientset *kubernetes.Clientset, namespace string, retryCount int) {
+	retryCount++
+	if retryCount > 0 {
+		logging.Error("retry namespace %s retryCount %d", namespace, retryCount)
+	}
+	options := metav1.ListOptions{
+		LabelSelector: "app=crawler",
+	}
+	var err error
 	var cronJobWatcher watch.Interface
 	// 通过 clientset 的 BatchV1() 客户端获取 CronJob 的 Watcher
 	if k8sutil.VersionGreaterThan("1.20") {
@@ -43,22 +64,11 @@ func watchEvent(clientset *kubernetes.Clientset, namespace string) {
 		return
 	}
 	defer func() {
-		jobWatcher.Stop()
-	}()
-	defer func() {
+		logging.Error("stop watching cronJobWatcher namespace %s", namespace)
 		cronJobWatcher.Stop()
+		watchCronJob(clientset, namespace, retryCount)
 	}()
-	var wg sync.WaitGroup
-	wg.Add(2) // 添加一个协程计数器
-	go func() {
-		defer wg.Done()
-		handlerJobEvens(jobWatcher.ResultChan())
-	}()
-	go func() {
-		defer wg.Done()
-		handlerCronJobEvens(cronJobWatcher.ResultChan())
-	}()
-	wg.Wait()
+	handlerCronJobEvens(cronJobWatcher.ResultChan())
 }
 
 func handlerJobEvens(eventChan <-chan watch.Event) {
@@ -114,7 +124,6 @@ func handlerCronJobEvens(eventChan <-chan watch.Event) {
 		default:
 			logging.Info(" unknown event type")
 		}
-
 	}
 }
 
@@ -302,6 +311,8 @@ func onWatchAddCronJob(obj interface{}) {
 					repo.EditJobExecute(executeRecord)
 					scheduledExecuteDataCheck(executeId)
 				}
+			} else {
+				logging.Warn("executeRecord not found %d err %v", executeId, err)
 			}
 		}
 	} else {
@@ -327,6 +338,8 @@ func onWatchDeleteCronJob(obj interface{}) {
 					UpdataRecordDataCount(executeId)
 				})
 			}
+		} else {
+			logging.Warn("executeRecord not found %d err %v", executeId, err)
 		}
 	} else {
 		logging.Info(" Label 'execute-id' not found")
@@ -355,42 +368,11 @@ func onWatcheErrorCronJob(obj interface{}) {
 				tickerManager.StopTicker(executeId, func() {
 					UpdataRecordDataCount(executeId)
 				})
+			} else {
+				logging.Warn("executeRecord not found %d err %v", executeId, err)
 			}
 		}
 	} else {
 		logging.Info(" Label 'execute-id' not found")
 	}
-}
-
-func watchJob(clientset *kubernetes.Clientset) {
-	// 创建 Informer 工厂，监听所有命名空间的 Job 资源
-	informerFactory := informers.NewSharedInformerFactory(clientset, 0)
-	jobInformer := informerFactory.Batch().V1().Jobs().Informer()
-	// 设置事件处理函数
-	jobInformer.AddEventHandler(
-		cache.ResourceEventHandlerFuncs{
-			AddFunc: func(obj interface{}) {
-				logging.Info("AddFunc call %v", obj)
-			},
-			UpdateFunc: func(oldObj, newObj interface{}) {
-				logging.Info("UpdateFunc call oldObj %v newObj %v", oldObj, newObj)
-			},
-			DeleteFunc: func(obj interface{}) {
-				logging.Info("DeleteFunc call %v", obj)
-			},
-		},
-	)
-	//启动informer
-	stopCh := make(chan struct{})
-	defer close(stopCh)
-	informerFactory.Start(stopCh)
-	informerFactory.WaitForCacheSync(stopCh)
-	// 等待缓存同步
-	// if !cache.WaitForCacheSync(stopCh, jobInformer.HasSynced) {
-	// 	fmt.Println("Error syncing cache")
-	// 	return
-	// }
-
-	// // 保持主程序运行
-	// select {}
 }
