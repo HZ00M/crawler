@@ -819,7 +819,7 @@ class BilibiliSpider(RedisSpider):
         oid = biliGame_item["target_obj_id"]
         url_info = response.meta["url_info"]
         # 游戏下载量
-        biliGame_item["downloads"] = resp_json["data"]["download_count"]
+        biliGame_item["download_count"] = resp_json["data"]["download_count"]
         # 游戏预约量
         if "book_num" in resp_json["data"]:
             biliGame_item["book_num"] = resp_json["data"]["book_num"]

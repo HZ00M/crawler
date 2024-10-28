@@ -56,7 +56,7 @@ class NeonScrapyItem(scrapy.Item):
     android_last_update = scrapy.Field()
     ios_last_update = scrapy.Field()
     mark = scrapy.Field()
-    downloads = scrapy.Field()
+    download_count = scrapy.Field()
     book_num = scrapy.Field()
     down_count = scrapy.Field()
     take_time = scrapy.Field()
