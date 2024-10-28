@@ -14,8 +14,8 @@ from yihai_scrapy.config import cookies
 from yihai_scrapy.config import url_config
 from datetime import datetime
 import logging
-from yihai_scrapy import logger
-import random
+# from yihai_scrapy import logger
+# import random
 
 # ---1 导入分布式爬虫类
 from scrapy_redis.spiders import RedisSpider
@@ -37,7 +37,7 @@ class BilibiliSpider(RedisSpider):
     not_req_list = {}
     req_index = 1
 
-    def __init__(self, key_word="", execute_id=0, execute_name="", igore_word="", begin_time=0, end_time=0, *args,
+    def __init__(self, key_word="", execute_id=0, execute_name="", ignore_word="", begin_time=0, end_time=0, *args,
                  **kwargs):
         logging.info(kwargs)
         domain = kwargs.pop('domain', '')
@@ -50,7 +50,7 @@ class BilibiliSpider(RedisSpider):
         self.key_word = key_word
         self.execute_id = int(execute_id)
         self.execute_name = execute_name
-        self.igore_word = igore_word
+        self.ignore_word = ignore_word.split(';') if ignore_word else []
         if begin_time:
             self.start_time = int(begin_time)
         else:
@@ -293,6 +293,10 @@ class BilibiliSpider(RedisSpider):
             logging.info(f"发布时间：{timestamp} out of range start_time:{self.start_time},end_time:{self.end_time}")
             return
         # yield video_item
+        for ignore in self.ignore_word:
+            if ignore in video_item["title"]:
+                logging.info(f"视频标题：{video_item['title']}含有屏蔽字：{ignore},跳过")
+                return
         # return
         # 视频发布人名字
         name = response.xpath(Page.up_name).extract_first()
