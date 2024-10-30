@@ -96,9 +96,10 @@ func BuildDockerImage(language, pluginRootDir, imageNameWithTag string) (bool, e
 	}
 	fullImageName := GetFullImageName(imageNameWithTag)
 	option := types.ImageBuildOptions{
-		Tags:       []string{fullImageName},
-		Dockerfile: "Dockerfile", // 如果 Dockerfile.back 名称或路径不同，需要指定
-		Remove:     false,        // 删除中间层镜像
+		Tags:        []string{fullImageName},
+		Dockerfile:  "Dockerfile", // 如果 Dockerfile.back 名称或路径不同，需要指定
+		Remove:      false,        // 删除中间层镜像
+		NetworkMode: "host",
 	}
 	pwd, err := os.Getwd()
 	execPath, err := os.Executable()

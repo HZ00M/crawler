@@ -101,5 +101,17 @@ data:
         "default.registry.tke-syyx.com"
       ],
       "debug": true,
-      "experimental": true
+      "experimental": true,
+      "ip-forward": true,
+      "ip-masq": false,
+      "iptables": true,
+      "ipv6": false,
+      "live-restore": true,
+      "log-level": "debug",
+      "log-driver": "json-file",
+      "selinux-enabled": false,
+      "dns": [
+        "8.8.8.8",
+        "1.1.1.1"
+      ]
     }
