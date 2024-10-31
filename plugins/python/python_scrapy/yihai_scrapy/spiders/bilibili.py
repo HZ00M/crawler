@@ -324,6 +324,9 @@ class BilibiliSpider(RedisSpider):
         for info in info_list:
             key, value = info.split(" ")
             video_item[video_config[key]] = value
+        # 总互动量(三连+转发+评论+弹幕)
+        video_item["active_count"] = int(video_item["like_count"]) + int(video_item["coin_count"]) + int(
+            video_item["mark_count"]) + int(video_item["share_count"]) + int(video_item["comments_count"]) + int(video_item["barrage_count"])
         # 主界面的内容抓完，开始构造评论的抓取
         # 正则获取视频唯一标识oid，后续获取评论要用
         matches = re.findall(r'oid=(\d+)', response.text)
@@ -624,6 +627,9 @@ class BilibiliSpider(RedisSpider):
             article_item["coin_count"] = article_html_json["readInfo"]["stats"]["coin"]
             # 专栏转发人数
             article_item["share_count"] = article_html_json["readInfo"]["stats"]["share"]
+            # 专栏互动量（三连+转发+评论）
+            article_item["active_count"] = int(article_item["like_count"]) + int(article_item["coin_count"]) + int(
+                article_item["mark_count"]) + int(article_item["share_count"]) + int(article_item["comments_count"])
             # 专栏标签
             if "tags" in article_html_json["readInfo"]:
                 tag_list = article_html_json["readInfo"]["tags"]
@@ -789,6 +795,9 @@ class BilibiliSpider(RedisSpider):
         dynamic_item["comments_count"] = dynamic_info["modules"]["module_stat"]["comment"]["count"]
         # 专栏转发量
         dynamic_item["share_count"] = dynamic_info["modules"]["module_stat"]["forward"]["count"]
+        # 专栏互动量（没有投币和收藏？）
+        dynamic_item["active_count"] = int(dynamic_item["like_count"]) + int(dynamic_item["coin_count"]) + int(
+            dynamic_item["mark_count"]) + int(dynamic_item["share_count"]) + int(dynamic_item["comments_count"])
         # 专栏up主用户id
         dynamic_item["user_id"] = uid
         return dynamic_item

@@ -20,9 +20,9 @@ class bilibiliPage:
     # 视频简介
     video_introduction = '//*[@id="v_desc"]/div/span/text()'
     # 视频标签
-    video_tag = '//*[@id="v_tag"]/div//a/text()[normalize-space()]'
+    video_tag = '//*[@class="video-tag-container"]/div//a/text()[normalize-space()]'
     # 视频话题
-    video_topic = '//*[@id="v_tag"]/div//a/@title'
+    video_topic = '//*[@class="video-tag-container"]/div//a/@title'
     # 视频热度（视频播放量/弹幕量/点赞数/投币数/收藏人数/转发人数）
     video_heat = '/html/head/meta[@name="description"]/@content'
     # 视频评论人数
