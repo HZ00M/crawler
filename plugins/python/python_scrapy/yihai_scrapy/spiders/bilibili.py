@@ -10,29 +10,31 @@ from yihai_scrapy import Util
 from yihai_scrapy.items import NeonScrapyItem
 from yihai_scrapy.page import bilibiliPage as Page
 from yihai_scrapy.config import scrapy_config
-from yihai_scrapy.config import cookies
+from yihai_scrapy.config import req_config
 from yihai_scrapy.config import url_config
 from datetime import datetime
 import logging
+
+
 # from yihai_scrapy import logger
 # import random
 
 # ---1 导入分布式爬虫类
-from scrapy_redis.spiders import RedisSpider
+# from scrapy_redis.spiders import RedisSpider
 
 
 # user_card = ["https://api.bilibili.com/x/web-interface/card?mid=163769640&photo=true&web_location=333.788"]
 
 # ---2 继承分布式爬虫类
-# class BilibiliSpider(scrapy.Spider):
-class BilibiliSpider(RedisSpider):
+class BilibiliSpider(scrapy.Spider):
+    # class BilibiliSpider(RedisSpider):
     name = "bilibili"
     # ---3 注释掉start_url&allowed_domains
-    # allowed_domains = ["bilibili.com", "biligame.com"]
+    allowed_domains = ["bilibili.com", "biligame.com"]
     start_urls = []
 
     # ---4 设置redis-key
-    redis_key = "bilibili_key"
+    # redis_key = "bilibili_key"
 
     not_req_list = {}
     req_index = 1
@@ -40,12 +42,12 @@ class BilibiliSpider(RedisSpider):
     def __init__(self, key_word="", execute_id=0, execute_name="", ignore_word="", begin_time=0, end_time=0, *args,
                  **kwargs):
         logging.info(kwargs)
-        domain = kwargs.pop('domain', '')
-        self.allowed_domains = list(filter(None, domain.split(',')))
+        # domain = kwargs.pop('domain', '')
+        # self.allowed_domains = list(filter(None, domain.split(',')))
         super(BilibiliSpider, self).__init__(*args, **kwargs)
 
         # super().__init__(**kwargs)
-        temp = cookies
+        temp = req_config["cookies"]
         self.cookies = {data.split('=')[0]: data.split('=')[1] for data in temp.split('; ')}
         self.key_word = key_word
         self.execute_id = int(execute_id)
@@ -67,10 +69,14 @@ class BilibiliSpider(RedisSpider):
             if config["video"]:
                 url_info = {"config": config}
                 if config["sort_type"] == "1":
-                    url_info["url"] = url_config["video"]["init_page"].format(keyword=key_word, page="1", num=0)
+                    url_info["url"] = url_config["video"]["init_page"].format(keyword=key_word, page="1", num=0,
+                                                                              begin_time=self.start_time,
+                                                                              end_time=self.end_time)
                 elif config["sort_type"] == "2":
                     url_info["url"] = url_config["video"]["init_page"].format(keyword=key_word,
-                                                                              page="1", num=0) + "&order=pubdate"
+                                                                              page="1", num=0,
+                                                                              begin_time=self.start_time,
+                                                                              end_time=self.end_time) + "&order=pubdate"
                 else:
                     logging.info(f"config sort_type error, keyword:{config['name']}")
                     return
@@ -115,7 +121,7 @@ class BilibiliSpider(RedisSpider):
             req = scrapy.Request(url=url_info["url"],
                                  callback=self.parse,
                                  meta={'url_info': url_info, "req_index": BilibiliSpider.req_index},
-                                 # cookies=self.cookies
+                                 # req_config=self.req_config
                                  # dont_filter=True
                                  )
             BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
@@ -148,7 +154,7 @@ class BilibiliSpider(RedisSpider):
                 req = scrapy.Request(url=item_list[0]['record_ur'], callback=self.get_video_details,
                                      meta={'video_item': item_list[0], "item_list": item_list, "item_index": 1,
                                            'url_info': url_info, "req_index": BilibiliSpider.req_index},
-                                     # cookies=self.cookies,
+                                     # req_config=self.req_config,
                                      dont_filter=True)
                 BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
                 BilibiliSpider.req_index += 1
@@ -165,14 +171,15 @@ class BilibiliSpider(RedisSpider):
                 item_list = []
                 for article_id in article_list:
                     article_item = NeonScrapyItem()
-                    url = f"https://www.bilibili.com/read/cv{article_id}/?from=search&spm_id_from=333.337.0.0"
+                    # url = f"https://www.bilibili.com/read/cv{article_id}/?from=search&spm_id_from=333.337.0.0"
+                    url = url_config["article"]["detail_page"].format(article_id=article_id)
                     article_item["record_ur"] = url
                     article_item["target_obj_id"] = article_id
                     item_list.append(article_item)
                 req = scrapy.Request(url=item_list[0]['record_ur'], callback=self.get_article_details,
                                      meta={'article_item': item_list[0], "item_list": item_list, "item_index": 1,
                                            'url_info': url_info, "req_index": BilibiliSpider.req_index},
-                                     # cookies=self.cookies,
+                                     # req_config=self.req_config,
                                      dont_filter=True)
                 BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
                 BilibiliSpider.req_index += 1
@@ -267,7 +274,7 @@ class BilibiliSpider(RedisSpider):
             req = scrapy.Request(url=next_video_item['record_ur'], callback=self.get_video_details,
                                  meta={'video_item': next_video_item, "item_list": item_list, 'url_info': url_info,
                                        "item_index": item_index + 1, "req_index": BilibiliSpider.req_index},
-                                 # cookies=self.cookies,
+                                 # req_config=self.req_config,
                                  dont_filter=True)
             BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
             BilibiliSpider.req_index += 1
@@ -284,7 +291,7 @@ class BilibiliSpider(RedisSpider):
                                  callback=self.parse,
                                  meta={'url_info': url_info,
                                        "req_index": BilibiliSpider.req_index},
-                                 # cookies=self.cookies
+                                 # req_config=self.req_config
                                  )
             BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
             BilibiliSpider.req_index += 1
@@ -312,7 +319,7 @@ class BilibiliSpider(RedisSpider):
         # 视频话题
         video_item['subject'] = response.xpath(Page.video_topic).extract()
         # 视频评论数
-        video_item['comments_count'] = response.xpath(Page.video_comment_num).extract_first()
+        # video_item['comments_count'] = response.xpath(Page.video_comment_num).extract_first()
         # 视频三连数量定位
         video_info = response.xpath(Page.video_heat).extract_first()
         # video_info = video_info.split("尽在哔哩哔哩bilibili ")[-1].split(", 视频作者")[0] # 这种有时候取不到，可能是有些视频违规，不能分享，所以分享信息里没有关键字
@@ -324,22 +331,19 @@ class BilibiliSpider(RedisSpider):
         for info in info_list:
             key, value = info.split(" ")
             video_item[video_config[key]] = value
-        # 总互动量(三连+转发+评论+弹幕)
-        video_item["active_count"] = int(video_item["like_count"]) + int(video_item["coin_count"]) + int(
-            video_item["mark_count"]) + int(video_item["share_count"]) + int(video_item["comments_count"]) + int(video_item["barrage_count"])
         # 主界面的内容抓完，开始构造评论的抓取
         # 正则获取视频唯一标识oid，后续获取评论要用
         matches = re.findall(r'oid=(\d+)', response.text)
         if matches:
             oid = matches[0]
             video_item["target_obj_id"] = oid
-            url = f"https://api.bilibili.com/x/web-interface/card?mid={video_item['user_id']}&photo=true&web_location=333.788"
-            req = scrapy.Request(url=url, callback=self.get_user_card,
-                                 meta={'item': video_item, "req_index": BilibiliSpider.req_index},
-                                 dont_filter=True)
-            BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
-            BilibiliSpider.req_index += 1
-            yield req
+            # url = f"https://api.bilibili.com/x/web-interface/card?mid={video_item['user_id']}&photo=true&web_location=333.788"
+            # req = scrapy.Request(url=url, callback=self.get_user_card,
+            #                      meta={'item': video_item, "req_index": BilibiliSpider.req_index},
+            #                      dont_filter=True)
+            # BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
+            # BilibiliSpider.req_index += 1
+            # yield req
         else:
             logging.info("未找到 oid")
             yield video_item
@@ -365,7 +369,8 @@ class BilibiliSpider(RedisSpider):
         w_rid = Util.comment_decryption("&".join(temp))
         url = "https://api.bilibili.com/x/v2/reply/wbi/main?" + "&".join(temp) + f"&w_rid={w_rid}"
         req = scrapy.Request(url=url, callback=self.get_video_comment,
-                             meta={'oid': oid, 'first_page': True, "type": 1, "randomProxy": False,
+                             meta={'oid': oid, 'first_page': True, "video_item": video_item, "type": 1,
+                                   "randomProxy": False,
                                    "req_index": BilibiliSpider.req_index},
                              cookies=self.cookies,
                              dont_filter=True)
@@ -385,6 +390,20 @@ class BilibiliSpider(RedisSpider):
             return
         data = resp_json["data"]
 
+        # 如果是首页，并且传了视频对象，获取完视频评论数量后，就返回视频数据
+        if response.meta["first_page"] and "video_item" in response.meta:
+            video_item = response.meta["video_item"]
+            video_item['comments_count'] = data["cursor"]["all_count"]
+            # 总互动量(三连+转发+评论+弹幕)
+            video_item["active_count"] = 0
+            self.get_active_count(video_item)
+            url = f"https://api.bilibili.com/x/web-interface/card?mid={video_item['user_id']}&photo=true&web_location=333.788"
+            req = scrapy.Request(url=url, callback=self.get_user_card,
+                                 meta={'item': video_item, "req_index": BilibiliSpider.req_index},
+                                 dont_filter=True)
+            BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
+            BilibiliSpider.req_index += 1
+            yield req
         # up主id
         # upper_id = data["upper"]["mid"]
         # 置顶的评论单独放在一个数据里,且只需要首次获取一次
@@ -508,12 +527,13 @@ class BilibiliSpider(RedisSpider):
         comment_item["comment"] = comment["content"]["message"]
         # 评论人
         comment_item["commenter_name"] = comment["member"]["uname"]
+        comment_item["author"] = comment["member"]["uname"]
         # 评论点赞量
         comment_item["like_count"] = comment["like"]
         # 评论回复量
         comment_item["comment_reply_num"] = comment["rcount"]
         # 评论时间
-        comment_item["comment_time"] = comment["ctime"]
+        comment_item["comment_time"] = self.timestamp_to_time(comment["ctime"])
         # 去主页拿评论人的信息
         # 评论人mid
         comment_item["user_id"] = comment["member"]["mid"]
@@ -591,7 +611,7 @@ class BilibiliSpider(RedisSpider):
                                      meta={'article_item': next_video_item, "item_list": item_list,
                                            'url_info': url_info,
                                            "item_index": item_index + 1, "req_index": BilibiliSpider.req_index},
-                                     # cookies=self.cookies,
+                                     # req_config=self.req_config,
                                      dont_filter=True)
                 BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
                 BilibiliSpider.req_index += 1
@@ -605,7 +625,7 @@ class BilibiliSpider(RedisSpider):
                 req = scrapy.Request(url=url_info["url"],
                                      callback=self.parse,
                                      meta={'url_info': url_info, "req_index": BilibiliSpider.req_index},
-                                     # cookies=self.cookies
+                                     # req_config=self.req_config
                                      )
                 BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
                 BilibiliSpider.req_index += 1
@@ -628,8 +648,8 @@ class BilibiliSpider(RedisSpider):
             # 专栏转发人数
             article_item["share_count"] = article_html_json["readInfo"]["stats"]["share"]
             # 专栏互动量（三连+转发+评论）
-            article_item["active_count"] = int(article_item["like_count"]) + int(article_item["coin_count"]) + int(
-                article_item["mark_count"]) + int(article_item["share_count"]) + int(article_item["comments_count"])
+            article_item["active_count"] = 0
+            self.get_active_count(article_item)
             # 专栏标签
             if "tags" in article_html_json["readInfo"]:
                 tag_list = article_html_json["readInfo"]["tags"]
@@ -650,7 +670,7 @@ class BilibiliSpider(RedisSpider):
             wts = int(time.time())
             temp = [
                 "mode=3",
-                f"oid={article_item['视频id']}",
+                f"oid={article_item['target_obj_id']}",
                 f"pagination_str={pagination_str}",
                 "plat=1",
                 "seek_rpid=",
@@ -662,7 +682,7 @@ class BilibiliSpider(RedisSpider):
             url = "https://api.bilibili.com/x/v2/reply/wbi/main?" + "&".join(temp) + f"&w_rid={w_rid}"
             logging.info(url)
             req = scrapy.Request(url=url, callback=self.get_video_comment,
-                                 meta={'oid': article_item['视频id'], 'first_page': True, "type": 12,
+                                 meta={'oid': article_item['target_obj_id'], 'first_page': True, "type": 12,
                                        "req_index": BilibiliSpider.req_index},
                                  cookies=self.cookies,
                                  dont_filter=True)
@@ -698,7 +718,12 @@ class BilibiliSpider(RedisSpider):
         for dynamic_info in resp_json["data"]["items"]:
             dynamic_item = self.get_dynamic_details(dynamic_info, url_info["UID"])
             # 如果不满足条件，直接就结束循环
-            if not self.check_time(int(dynamic_item["msg_time"])):
+            # if not self.check_time(int(dynamic_item["msg_time"])):
+            if self.end_time < int(dynamic_item["msg_time"]):
+                logging.info(
+                    f"发布时间：{dynamic_item['msg_time']} >end_time,continue,start_time:{self.start_time},end_time:{self.end_time}")
+                continue
+            elif self.start_time > int(dynamic_item["msg_time"]):
                 logging.info(
                     f"发布时间：{dynamic_item['msg_time']} out of range start_time:{self.start_time},end_time:{self.end_time}")
                 return
@@ -796,8 +821,8 @@ class BilibiliSpider(RedisSpider):
         # 专栏转发量
         dynamic_item["share_count"] = dynamic_info["modules"]["module_stat"]["forward"]["count"]
         # 专栏互动量（没有投币和收藏？）
-        dynamic_item["active_count"] = int(dynamic_item["like_count"]) + int(dynamic_item["coin_count"]) + int(
-            dynamic_item["mark_count"]) + int(dynamic_item["share_count"]) + int(dynamic_item["comments_count"])
+        dynamic_item["active_count"]=0
+        self.get_active_count(dynamic_item)
         # 专栏up主用户id
         dynamic_item["user_id"] = uid
         return dynamic_item
@@ -879,7 +904,10 @@ class BilibiliSpider(RedisSpider):
             dt = datetime.strptime(comment_item['comment_time'], "%Y-%m-%d %H:%M:%S")
             # 转换为时间戳
             timestamp = int(time.mktime(dt.timetuple()))
-            if timestamp < self.end_time:
+            if timestamp > self.end_time:
+                logging.info("小于开始时间，continue")
+                continue
+            if timestamp < self.start_time:
                 logging.info("超过开始时间，停止抓取")
                 return
             # if not self.check_time(timestamp):
@@ -924,6 +952,7 @@ class BilibiliSpider(RedisSpider):
         if comment_count > 0:
             request_id = Util.generate_random_string()
             ts = int(time.time() * 1000)
+            url = url_config["biliGame"]["replay_page"]
             reply_sign = url_config["biliGame"]["reply_sign"].format(game_base_id=url_info["config"]["gameId"],
                                                                      rank_type=url_info["config"]["sort_type"],
                                                                      page_num=page_index, ts=ts,
@@ -933,7 +962,7 @@ class BilibiliSpider(RedisSpider):
             req_url = url + reply_sign + "&sign=" + sign
             req = scrapy.Request(url=req_url, callback=self.get_biligime_comment,
                                  meta={"url_info": response.meta["url_info"],
-                                       "page_index": page_index, "comment_count": comment_count - 10,
+                                       "page_index": page_index, "comment_count": comment_count - 10,"oid": oid,
                                        "req_index": BilibiliSpider.req_index},
                                  dont_filter=True)
             BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
@@ -951,6 +980,7 @@ class BilibiliSpider(RedisSpider):
         comment_item["comment"] = comment["content"]
         # 评论人
         comment_item["commenter_name"] = comment["user_name"]
+        comment_item["author"] = comment["user_name"]
         # 评论点赞量
         comment_item["like_count"] = comment["up_count"]
         # 评论踩量
@@ -989,3 +1019,22 @@ class BilibiliSpider(RedisSpider):
         # run_time = datetime.fromtimestamp(self.run_time).date()
         # publish_time = datetime.fromtimestamp(publish_time).date()
         return self.start_time < publish_time < self.end_time
+
+    def timestamp_to_time(self, timestamp):
+        # 时间戳单位是秒
+        time_tuple = time.localtime(timestamp)
+        return time.strftime("%Y-%m-%d %H:%M:%S", time_tuple)
+
+    def get_active_count(self, item):
+        if "like_count" in item and item["like_count"]:
+            item["active_count"] += int(item["like_count"])
+        if "coin_count" in item and item["coin_count"]:
+            item["active_count"] += int(item["coin_count"])
+        if "share_count" in item and item["share_count"]:
+            item["active_count"] += int(item["share_count"])
+        if "comments_count" in item and item["comments_count"]:
+            item["active_count"] += int(item["comments_count"])
+        if "barrage_count" in item and item["barrage_count"]:
+            item["active_count"] += int(item["barrage_count"])
+        if "mark_count" in item and item["mark_count"]:
+            item["active_count"] += int(item["mark_count"])

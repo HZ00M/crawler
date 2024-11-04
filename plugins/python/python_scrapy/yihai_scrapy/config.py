@@ -1,28 +1,56 @@
-# 通用的配置
+locast_debug = False
+
+# 爬取数据配置，key=搜索的关键字
 scrapy_config = {
     "霓虹深渊": {
         "name": "霓虹深渊",
-        "video": True,  # 是否抓取视频
-        "article": True,  # 是否抓取专栏
-        "dynamic": True,  # 是否抓取动态
+        "video": False,  # 是否抓取视频
+        "article": False,  # 是否抓取专栏
+        "dynamic": False,  # 是否抓取动态
         "biliGame": True,  # 是否抓取游戏中心
         "UID": 109710253,  # 动态对应的用户id
         "gameId": 106852,  # 游戏中心对应的游戏id
         "sort_type": "2",  # 排序方式（视频/专栏，1代表默认排序，2代表发布时间）
         "app_key": "h9Ejat5tFh81cq8V",  # b站里的游戏appkey，拿评论要用到
     },
+    "无悔华夏": {
+        "name": "无悔华夏",
+        "video": True,  # 是否抓取视频
+        "article": False,  # 是否抓取专栏
+        "dynamic": False,  # 是否抓取动态
+        "biliGame": False,  # 是否抓取游戏中心
+        "UID": 301793273,  # 动态对应的用户id
+        "gameId": 106210,  # 游戏中心对应的游戏id
+        "sort_type": "2",  # 排序方式（视频/专栏，1代表默认排序，2代表发布时间）
+        "app_key": "h9Ejat5tFh81cq8V",  # b站里的游戏appkey，拿评论要用到
+    },
+    "新月同行": {
+        "name": "无悔华夏",
+        "video": True,  # 是否抓取视频
+        "article": False,  # 是否抓取专栏
+        "dynamic": False,  # 是否抓取动态
+        "biliGame": False,  # 是否抓取游戏中心
+        "UID": 1746158065,  # 动态对应的用户id
+        "gameId": 109794,  # 游戏中心对应的游戏id
+        "sort_type": "2",  # 排序方式（视频/专栏，1代表默认排序，2代表发布时间）
+        "app_key": "h9Ejat5tFh81cq8V",  # b站里的游戏appkey，拿评论要用到
+    },
 }
 
-# 页面cookies,2天更新一次
-cookies = "header_theme_version=CLOSE; enable_web_push=DISABLE; buvid_fp_plain=undefined; buvid4=FD8003FC-6D45-A0CC-ADD4-E3267A807C6A11873-023081513-%2Fj7AVq8nv%2BlwD8SNCkyPQg%3D%3D; hit-dyn-v2=1; LIVE_BUVID=AUTO3217084866844183; FEED_LIVE_VERSION=V8; is-2022-channel=1; PVID=1; buvid3=F90F32C0-630E-C240-FF85-D7D05B7645EC90496infoc; b_nut=1724036190; _uuid=1584F499-DAA6-E10A7-D45F-76872CC821E991312infoc; CURRENT_BLACKGAP=0; CURRENT_FNVAL=4048; home_feed_column=5; fingerprint=32632d00a3c63b9592f1bff46463622c; browser_resolution=1912-956; rpdid=|(u|JkYY~JR)0J'u~k)JmJkm~; CURRENT_QUALITY=80; DedeUserID=1619277001; DedeUserID__ckMd5=1fcf8cd9c986b10a; b_lsid=2B5105532_192ADF86298; bili_ticket=eyJhbGciOiJIUzI1NiIsImtpZCI6InMwMyIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3Mjk3NTQ3OTAsImlhdCI6MTcyOTQ5NTUzMCwicGx0IjotMX0.MXVcLMKhejFIMYL6oBpedcnEkKOHrnr08gKgZ-CQ9Lk; bili_ticket_expires=1729754730; SESSDATA=5a41aab0%2C1745047595%2C36356%2Aa1CjDCn1F7Hx5jy91Fz24TvQqBl3iodxTg0g_NhqvJjpT-eOxEk35i3mpQObSwif1jHLMSVkNsZWx5ZmlreXlLX0hVcGh6S19fMHcybzdGVEdUdTdDNGgyaHNuZVlMZVVrZ3R1bHVYQUhCelZTRVltNEVsZ3RJd1k3SjR5SmtuTjEtYnZDN0tmSE5BIIEC; bili_jct=9e18a1b7d725a776be564081e33b11b5; sid=4tx10e8c; bp_t_offset_1619277001=990682662643433472; buvid_fp=32632d00a3c63b9592f1bff46463622c"
+# 请求参数,目前主要是cookies,2天更新一次
+req_config = {
+    "cookies": "header_theme_version=CLOSE; enable_web_push=DISABLE; buvid_fp_plain=undefined; buvid4=FD8003FC-6D45-A0CC-ADD4-E3267A807C6A11873-023081513-%2Fj7AVq8nv%2BlwD8SNCkyPQg%3D%3D; hit-dyn-v2=1; LIVE_BUVID=AUTO3217084866844183; FEED_LIVE_VERSION=V8; is-2022-channel=1; PVID=1; buvid3=F90F32C0-630E-C240-FF85-D7D05B7645EC90496infoc; b_nut=1724036190; _uuid=1584F499-DAA6-E10A7-D45F-76872CC821E991312infoc; CURRENT_BLACKGAP=0; CURRENT_FNVAL=4048; home_feed_column=5; fingerprint=32632d00a3c63b9592f1bff46463622c; browser_resolution=1912-956; rpdid=|(u|JkYY~JR)0J'u~k)JmJkm~; CURRENT_QUALITY=80; DedeUserID=1619277001; DedeUserID__ckMd5=1fcf8cd9c986b10a; b_lsid=2B5105532_192ADF86298; bili_ticket=eyJhbGciOiJIUzI1NiIsImtpZCI6InMwMyIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3Mjk3NTQ3OTAsImlhdCI6MTcyOTQ5NTUzMCwicGx0IjotMX0.MXVcLMKhejFIMYL6oBpedcnEkKOHrnr08gKgZ-CQ9Lk; bili_ticket_expires=1729754730; SESSDATA=5a41aab0%2C1745047595%2C36356%2Aa1CjDCn1F7Hx5jy91Fz24TvQqBl3iodxTg0g_NhqvJjpT-eOxEk35i3mpQObSwif1jHLMSVkNsZWx5ZmlreXlLX0hVcGh6S19fMHcybzdGVEdUdTdDNGgyaHNuZVlMZVVrZ3R1bHVYQUhCelZTRVltNEVsZ3RJd1k3SjR5SmtuTjEtYnZDN0tmSE5BIIEC; bili_jct=9e18a1b7d725a776be564081e33b11b5; sid=4tx10e8c; bp_t_offset_1619277001=990682662643433472; buvid_fp=32632d00a3c63b9592f1bff46463622c"
+}
 
 # 各个页面网址相关
 url_config = {
     "video": {
-        "init_page": "https://search.bilibili.com/video?vt=14663435&keyword={keyword}&page={page}&o={num}"
+        # "init_page": "https://search.bilibili.com/video?vt=14663435&keyword={keyword}&page={page}&o={num}"
+        "init_page": "https://search.bilibili.com/video?vt=14663435&keyword={keyword}&pubtime_begin_s={begin_time}&pubtime_end_s={end_time}&page={page}&o={num}"
     },
     "article": {
-        "init_page": "https://search.bilibili.com/article?vt=31691143&keyword={keyword}&page={page}"
+        "init_page": "https://search.bilibili.com/article?vt=31691143&keyword={keyword}&page={page}",
+        "detail_page": "https://www.bilibili.com/read/cv{article_id}/?from=search&spm_id_from=333.337.0.0"
     },
     "dynamic": {
         # 动态入口接口
@@ -48,6 +76,26 @@ url_config = {
         "summer_sign": "appkey={appkey}&game_base_id={game_base_id}&request_id={request_id}&ts={ts}",
         # 预约，下载信息
         "game_info": "https://line1-h5-pc-api.biligame.com/game/detail/gameinfo?game_base_id={id}"
-
     }
+}
+
+# 随机代理ip参数
+ip_config = {
+    # 订单的账号密码
+    "user_password": "d2501514560:fd9fjsz8",
+    # 订单id
+    "secret_id": "ofcljov0wrq9oj5tyu28",
+    # 订单的secret_key，调用接口必备
+    "secret_key": "y0z5vxgbakbqc0lxl8vrlld9eumhxyw1",
+    # 使用多少个ip进行随机
+    "ip_count": 1
+}
+
+# sql参数
+sql_config = {
+    "dbname": "crawler",
+    "user": "postgres",
+    "password": "123456",
+    "host": "postgres" if not locast_debug else "10.100.16.111",
+    "port": 5432
 }

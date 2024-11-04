@@ -10,6 +10,7 @@ import json
 from yihai_scrapy.mysql import scrapy_sql
 
 
+
 class NeonScrapyPipeline:
     def open_spider(self, spider):
         self.file = open('bilibili1.json', 'w', encoding="utf-8")
@@ -36,8 +37,9 @@ class mysqlPipeline:
 
     def process_item(self, item, spider):
         # 把对象转换成字典，并将字典序列化
-        now_time = time.time()
-        item["take_time"] = int(now_time)
+        time_tuple = time.localtime(int(time.time()))
+        now_time = time.strftime("%Y-%m-%d %H:%M:%S", time_tuple)
+        item["take_time"] = now_time
         # 启动传过来的几个参数
         if spider.key_word:
             item["key_word"] = spider.key_word
