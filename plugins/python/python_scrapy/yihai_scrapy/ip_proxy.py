@@ -8,9 +8,9 @@ import time
 
 class IpProxy:
     # 账号密码
-    user_password = "d2501514560:fd9fjsz8"
+    user_password = config.ip_config["user_password"]
     # 订单id
-    secret_id = "ofcljov0wrq9oj5tyu28"
+    secret_id = config.ip_config["secret_id"]
     # token/请求签名
     secret_token = ""
     # token 过期时间
@@ -18,7 +18,7 @@ class IpProxy:
     # proxy列表
     proxy_list = {}
     # 随机ip个数
-    ip_count = 5
+    ip_count = config.ip_config["ip_count"]
 
     # 获取签名
     @staticmethod
@@ -26,8 +26,8 @@ class IpProxy:
         url = "https://auth.kdlapi.com/api/get_secret_token"
         headers = {"Content-Type": "application/x-www-form-urlencoded"}
         data = {
-            "secret_id": 'ofcljov0wrq9oj5tyu28',
-            "secret_key": "y0z5vxgbakbqc0lxl8vrlld9eumhxyw1"
+            "secret_id": config.ip_config["secret_id"],
+            "secret_key": config.ip_config["secret_key"]
         }
         result = requests.post(url=url, headers=headers, data=data)
         if result.status_code != 200:
