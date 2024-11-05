@@ -55,28 +55,28 @@ USER_AGENT_List = [
 # ]
 
 # 设置重复过滤器的模块
-DUPEFILTER_CLASS = "scrapy_redis.dupefilter.RFPDupeFilter"
-#设置调取器,scrap_redis中的调度器具备与数据库交互的功能
-SCHEDULER = "scrapy_redis.scheduler.Scheduler"
-#设置当爬虫结束的时候是否保持redis数据库中的去重集合与任务队列
-SCHEDULER_PERSIST = True
-# # 爬虫开始的时候，是否清掉redis数据库里的去重合集和任务队列
-SCHEDULER_FLUSH_ON_START = True
+# DUPEFILTER_CLASS = "scrapy_redis.dupefilter.RFPDupeFilter"
+# #设置调取器,scrap_redis中的调度器具备与数据库交互的功能
+# SCHEDULER = "scrapy_redis.scheduler.Scheduler"
+# #设置当爬虫结束的时候是否保持redis数据库中的去重集合与任务队列
+# SCHEDULER_PERSIST = True
+# # # 爬虫开始的时候，是否清掉redis数据库里的去重合集和任务队列
+# SCHEDULER_FLUSH_ON_START = True
 
 
 # Obey robots.txt rules
 # ROBOTSTXT_OBEY = True
 
 # Configure maximum concurrent requests performed by Scrapy (default: 16)
-CONCURRENT_REQUESTS = 16
+CONCURRENT_REQUESTS = 32
 
 # Configure a delay for requests for the same website (default: 0)
 # See https://docs.scrapy.org/en/latest/topics/settings.html#download-delay
 # See also autothrottle settings and docs
-DOWNLOAD_DELAY = 1
+DOWNLOAD_DELAY = 0.3
 # The download delay setting will honor only one of:
-CONCURRENT_REQUESTS_PER_DOMAIN = 5
-CONCURRENT_REQUESTS_PER_IP = 5
+CONCURRENT_REQUESTS_PER_DOMAIN = 16
+CONCURRENT_REQUESTS_PER_IP = 16
 
 # Disable req_config (enabled by default)
 # cookies传递
@@ -123,7 +123,7 @@ RANDOM_DELAY_MAX = 1
 ITEM_PIPELINES = {
     "yihai_scrapy.pipelines.NeonScrapyPipeline": 300,
     "yihai_scrapy.pipelines.mysqlPipeline": 301,
-    'scrapy_redis.pipelines.RedisPipeline': 555,
+    # 'scrapy_redis.pipelines.RedisPipeline': 555,
 }
 
 # Enable and configure the AutoThrottle extension (disabled by default)
@@ -153,6 +153,6 @@ TWISTED_REACTOR = "twisted.internet.asyncioreactor.AsyncioSelectorReactor"
 FEED_EXPORT_ENCODING = "utf-8"
 
 # redis地址
-REDIS_URL = 'redis://10.100.2.227:30379'
+# REDIS_URL = 'redis://10.100.2.227:30379'
 
 # SCHEDULER_IDLE_BEFORE_CLOSE:int = 20

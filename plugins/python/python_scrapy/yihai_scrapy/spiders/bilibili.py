@@ -39,7 +39,7 @@ class BilibiliSpider(scrapy.Spider):
     not_req_list = {}
     req_index = 1
 
-    def __init__(self, key_word="", execute_id=0, execute_name="", ignore_word="", begin_time=0, end_time=0, *args,
+    def __init__(self, key_word="", execute_id=0, execute_name="", ignore_word="", begin_time=0, end_time=0, model=0,*args,
                  **kwargs):
         logging.info(kwargs)
         # domain = kwargs.pop('domain', '')
@@ -53,14 +53,29 @@ class BilibiliSpider(scrapy.Spider):
         self.execute_id = int(execute_id)
         self.execute_name = execute_name
         self.ignore_word = ignore_word.split(';') if ignore_word else []
-        if begin_time:
+        self.model = int(model)
+        # 正常运行
+        if self.model == 0:
             self.start_time = int(begin_time)
-        else:
-            self.start_time = int(time.time()) - 86400 * 4
-        if end_time:
             self.end_time = int(end_time)
-        else:
-            self.end_time = int(time.time())
+        # 抓取前1天
+        elif self.model == 1:
+            now = datetime.now()
+            # 将当前日期的时间部分设置为 00:00:00
+            start_of_day = datetime(now.year, now.month, now.day)
+            # 转换为时间戳
+            timestamp = int(start_of_day.timestamp())
+            self.start_time = timestamp - 86400
+            self.end_time = timestamp
+        # 抓取前7天
+        elif self.model == 2:
+            now = datetime.now()
+            # 将当前日期的时间部分设置为 00:00:00
+            start_of_day = datetime(now.year, now.month, now.day)
+            # 转换为时间戳
+            timestamp = int(start_of_day.timestamp())
+            self.start_time = timestamp - 86400 * 7
+            self.end_time = timestamp
         # 添加起始url地址
         if key_word in scrapy_config:
             config = scrapy_config[key_word]
@@ -151,14 +166,24 @@ class BilibiliSpider(scrapy.Spider):
                     video_item['title'] = item.xpath(Page.video_title).extract_first()
                     video_item['record_ur'] = "https:" + item.xpath(Page.video_details).extract_first()
                     item_list.append(video_item)
-                req = scrapy.Request(url=item_list[0]['record_ur'], callback=self.get_video_details,
-                                     meta={'video_item': item_list[0], "item_list": item_list, "item_index": 1,
-                                           'url_info': url_info, "req_index": BilibiliSpider.req_index},
-                                     # req_config=self.req_config,
-                                     dont_filter=True)
-                BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
-                BilibiliSpider.req_index += 1
-                yield req
+                for item in range(len(item_list)):
+                    req = scrapy.Request(url=item_list[item]['record_ur'], callback=self.get_video_details,
+                                         meta={'video_item': item_list[item], "item_list": item_list, "item_index": item+1,
+                                               'url_info': url_info, "req_index": BilibiliSpider.req_index},
+                                         # req_config=self.req_config,
+                                         dont_filter=True)
+                    BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
+                    BilibiliSpider.req_index += 1
+                    yield req
+
+                # req = scrapy.Request(url=item_list[0]['record_ur'], callback=self.get_video_details,
+                #                      meta={'video_item': item_list[0], "item_list": item_list, "item_index": 1,
+                #                            'url_info': url_info, "req_index": BilibiliSpider.req_index},
+                #                      # req_config=self.req_config,
+                #                      dont_filter=True)
+                # BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
+                # BilibiliSpider.req_index += 1
+                # yield req
             else:
                 logging.info("未定位到视频主页面信息")
         # 专栏的
@@ -262,25 +287,25 @@ class BilibiliSpider(scrapy.Spider):
         # 转换为时间戳
         timestamp = int(time.mktime(dt.timetuple()))
         # if not self.check_time(timestamp):
-        if timestamp < self.start_time:
-            logging.info(f"发布时间：{timestamp} out of range start_time:{self.start_time},end_time:{self.end_time}")
-            return
-        # 发布时间满足筛选需求，就继续去遍历下一个视频
-        if len(item_list) > item_index:
-            logging.info("next video")
-            next_video_item = item_list[item_index]
-            logging.info(len(item_list))
-            logging.info(next_video_item['record_ur'])
-            req = scrapy.Request(url=next_video_item['record_ur'], callback=self.get_video_details,
-                                 meta={'video_item': next_video_item, "item_list": item_list, 'url_info': url_info,
-                                       "item_index": item_index + 1, "req_index": BilibiliSpider.req_index},
-                                 # req_config=self.req_config,
-                                 dont_filter=True)
-            BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
-            BilibiliSpider.req_index += 1
-            yield req
+        # if timestamp < self.start_time:
+        #     logging.info(f"发布时间：{timestamp} out of range start_time:{self.start_time},end_time:{self.end_time}")
+        #     return
+        # # 发布时间满足筛选需求，就继续去遍历下一个视频
+        # if len(item_list) > item_index:
+        #     logging.info("next video")
+        #     next_video_item = item_list[item_index]
+        #     logging.info(len(item_list))
+        #     logging.info(next_video_item['record_ur'])
+        #     req = scrapy.Request(url=next_video_item['record_ur'], callback=self.get_video_details,
+        #                          meta={'video_item': next_video_item, "item_list": item_list, 'url_info': url_info,
+        #                                "item_index": item_index + 1, "req_index": BilibiliSpider.req_index},
+        #                          # req_config=self.req_config,
+        #                          dont_filter=True)
+        #     BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
+        #     BilibiliSpider.req_index += 1
+        #     yield req
         # 如果没有下一页，则去拿
-        else:
+        if len(item_list) <= item_index:
             logging.info("next page")
             url_info["url"] = url_info["url"].replace(f"page={url_info['page']}",
                                                       f"page={url_info['page'] + 1}").replace(f"&o={url_info['num']}",
@@ -296,9 +321,9 @@ class BilibiliSpider(scrapy.Spider):
             BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
             BilibiliSpider.req_index += 1
             yield req
-        if timestamp > self.end_time:
-            logging.info(f"发布时间：{timestamp} out of range start_time:{self.start_time},end_time:{self.end_time}")
-            return
+        # if timestamp > self.end_time:
+        #     logging.info(f"发布时间：{timestamp} out of range start_time:{self.start_time},end_time:{self.end_time}")
+        #     return
         # yield video_item
         for ignore in self.ignore_word:
             if ignore in video_item["title"]:
@@ -329,8 +354,11 @@ class BilibiliSpider(scrapy.Spider):
         video_config = {"视频播放量": "read_count", "弹幕量": "barrage_count", "点赞数": "like_count",
                         "投硬币枚数": "coin_count", "收藏人数": "mark_count", "转发人数": "share_count"}
         for info in info_list:
-            key, value = info.split(" ")
-            video_item[video_config[key]] = value
+            try:
+                key, value = info.split(" ")
+                video_item[video_config[key]] = value
+            except:
+                logging.info(f"获取互动数据失败，req.url:{response.url}")
         # 主界面的内容抓完，开始构造评论的抓取
         # 正则获取视频唯一标识oid，后续获取评论要用
         matches = re.findall(r'oid=(\d+)', response.text)
@@ -393,7 +421,8 @@ class BilibiliSpider(scrapy.Spider):
         # 如果是首页，并且传了视频对象，获取完视频评论数量后，就返回视频数据
         if response.meta["first_page"] and "video_item" in response.meta:
             video_item = response.meta["video_item"]
-            video_item['comments_count'] = data["cursor"]["all_count"]
+            if "all_count" in data["cursor"]:
+                video_item['comments_count'] = data["cursor"]["all_count"]
             # 总互动量(三连+转发+评论+弹幕)
             video_item["active_count"] = 0
             self.get_active_count(video_item)
