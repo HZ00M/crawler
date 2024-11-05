@@ -21,9 +21,7 @@ type JobRecord struct {
 	Subject           string    `gorm:"type:varchar(255);column:subject"`
 	Author            string    `gorm:"type:varchar(255);column:author"`
 	RecordURL         string    `gorm:"type:text;column:record_url"`
-	MsgDate           string    `gorm:"type:varchar(255);column:msg_date"`
 	MsgTime           string    `gorm:"type:varchar(255);column:msg_time"`
-	TakeDate          string    `gorm:"type:varchar(255);column:take_date"`
 	TakeTime          string    `gorm:"type:varchar(255);column:take_time"`
 	FansCount         int       `gorm:"column:fans_count"`
 	InterestCount     int       `gorm:"column:interest_count"`
@@ -50,7 +48,7 @@ type JobRecord struct {
 	UserDescribe      string
 	DeveloperWord     string
 	AndroidLastUpdate string
-	ios_last_update   string
+	IosLastUpdate     string
 	mark              string
 	downloads         string
 	BookNum           int

@@ -44,11 +44,11 @@ spec:
               readOnly: true
           resources:
             requests:
-              memory: "4000Mi"
-              cpu: "2000m"
+              memory: "2000Mi"
+              cpu: "1000m"
             limits:
-              memory: "4000Mi"
-              cpu: "2000m"
+              memory: "2000Mi"
+              cpu: "1000m"
       volumes:
         - name: config-volume
           configMap:
