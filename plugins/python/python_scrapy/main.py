@@ -4,13 +4,17 @@ import subprocess
 import time
 import logging
 from yihai_scrapy import logger
+from yihai_scrapy.config import ip_config
+from yihai_scrapy.config import req_config
 
 
 def main():
     current_path = os.getcwd()
     venv_path = 'venv'
     script_command = 'scrapy crawl '
+    setting_command = ""
     config_list = sys.argv[1:]
+    config_list_a = [data for data in config_list]
     if len(config_list) == 0:
         logging.error("缺少关键参数")
         return
@@ -19,12 +23,26 @@ def main():
         if "type=" in run_type :
             scrapy_name = run_type.split("=")[1]
             script_command += scrapy_name
-            config_list.remove(run_type)
+            config_list_a.remove(run_type)
             break
+        # 如果传了ip数量
+        if "ip_count" in run_type:
+            ip_config["ip_count"] = int(run_type.split("=")[1])
+            config_list_a.remove(run_type)
+        if "cookies" in run_type:
+            req_config["cookies"] = run_type.split("cookies=")[1]
+            config_list_a.remove(run_type)
+        if "DOWNLOAD_DELAY" in run_type:
+            setting_command += f" -s {run_type}"
+            config_list_a.remove(run_type)
+
     # script_command += config_list[0]
     # config_list.pop(0)
-    for config in config_list:
+    for config in config_list_a:
         script_command += " -a " + config
+    # 如果有setting的配置，运行完毕后，单独加上setting的运行参数
+    if setting_command:
+        script_command += setting_command
     logging.info(script_command)
 
     # if os.name == 'nt':

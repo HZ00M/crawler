@@ -4,9 +4,9 @@ locast_debug = False
 scrapy_config = {
     "霓虹深渊": {
         "name": "霓虹深渊",
-        "video": False,  # 是否抓取视频
-        "article": False,  # 是否抓取专栏
-        "dynamic": False,  # 是否抓取动态
+        "video": True,  # 是否抓取视频
+        "article": True,  # 是否抓取专栏
+        "dynamic": True,  # 是否抓取动态
         "biliGame": True,  # 是否抓取游戏中心
         "UID": 109710253,  # 动态对应的用户id
         "gameId": 106852,  # 游戏中心对应的游戏id
@@ -16,9 +16,9 @@ scrapy_config = {
     "无悔华夏": {
         "name": "无悔华夏",
         "video": True,  # 是否抓取视频
-        "article": False,  # 是否抓取专栏
-        "dynamic": False,  # 是否抓取动态
-        "biliGame": False,  # 是否抓取游戏中心
+        "article": True,  # 是否抓取专栏
+        "dynamic": True,  # 是否抓取动态
+        "biliGame": True,  # 是否抓取游戏中心
         "UID": 301793273,  # 动态对应的用户id
         "gameId": 106210,  # 游戏中心对应的游戏id
         "sort_type": "2",  # 排序方式（视频/专栏，1代表默认排序，2代表发布时间）
@@ -27,9 +27,9 @@ scrapy_config = {
     "新月同行": {
         "name": "无悔华夏",
         "video": True,  # 是否抓取视频
-        "article": False,  # 是否抓取专栏
-        "dynamic": False,  # 是否抓取动态
-        "biliGame": False,  # 是否抓取游戏中心
+        "article": True,  # 是否抓取专栏
+        "dynamic": True,  # 是否抓取动态
+        "biliGame": True,  # 是否抓取游戏中心
         "UID": 1746158065,  # 动态对应的用户id
         "gameId": 109794,  # 游戏中心对应的游戏id
         "sort_type": "2",  # 排序方式（视频/专栏，1代表默认排序，2代表发布时间）
@@ -88,7 +88,7 @@ ip_config = {
     # 订单的secret_key，调用接口必备
     "secret_key": "y0z5vxgbakbqc0lxl8vrlld9eumhxyw1",
     # 使用多少个ip进行随机
-    "ip_count": 1
+    "ip_count": 5
 }
 
 # sql参数

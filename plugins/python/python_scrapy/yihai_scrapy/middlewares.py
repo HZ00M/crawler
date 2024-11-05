@@ -230,7 +230,7 @@ class TwistedMiddleware:
         if "req_index" in request.meta:
             try:
                 logging.info(f"self.index: {self.index}")
-                print(request.meta["req_index"])
+                logging.info(request.meta["req_index"])
                 self.index += 1
                 self.spider.not_req_list.pop(request.meta["req_index"])
             except:
