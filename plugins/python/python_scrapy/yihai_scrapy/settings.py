@@ -121,9 +121,9 @@ RANDOM_DELAY_MAX = 1
 # Configure item pipelines
 # See https://docs.scrapy.org/en/latest/topics/item-pipeline.html
 ITEM_PIPELINES = {
-    "yihai_scrapy.pipelines.NeonScrapyPipeline": 300,
-    "yihai_scrapy.pipelines.mysqlPipeline": 301,
-    # 'scrapy_redis.pipelines.RedisPipeline': 555,
+    # "yihai_scrapy.pipelines.NeonScrapyPipeline": 300,
+    "yihai_scrapy.pipelines.MysqlPipeline": 301,
+    'yihai_scrapy.pipelines.RedisPipeline': 302,
 }
 
 # Enable and configure the AutoThrottle extension (disabled by default)

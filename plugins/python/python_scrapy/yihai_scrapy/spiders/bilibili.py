@@ -2,6 +2,7 @@ import json
 import logging
 import re
 import time
+from distutils.command.config import config
 
 import scrapy
 
@@ -12,8 +13,10 @@ from yihai_scrapy.page import bilibiliPage as Page
 from yihai_scrapy.config import scrapy_config
 from yihai_scrapy.config import req_config
 from yihai_scrapy.config import url_config
+from yihai_scrapy.config import redis_config
 from datetime import datetime
 import logging
+import redis
 
 
 # from yihai_scrapy import logger
@@ -39,13 +42,16 @@ class BilibiliSpider(scrapy.Spider):
     not_req_list = {}
     req_index = 1
 
-    def __init__(self, key_word="", execute_id=0, execute_name="", ignore_word="", begin_time=0, end_time=0, model=0,*args,
+    def __init__(self, key_word="", execute_id=0, execute_name="", ignore_word="", begin_time=0, end_time=0, model=0,
+                 *args,
                  **kwargs):
         logging.info(kwargs)
         # domain = kwargs.pop('domain', '')
         # self.allowed_domains = list(filter(None, domain.split(',')))
         super(BilibiliSpider, self).__init__(*args, **kwargs)
-
+        self.redis = redis.StrictRedis(host=redis_config["host"], port=redis_config["port"], db=redis_config["db"],
+                                       decode_responses=redis_config["decode_responses"])
+        self.bilibili_user_dicts = self.redis.hgetall(redis_config["bilibili"])
         # super().__init__(**kwargs)
         temp = req_config["cookies"]
         self.cookies = {data.split('=')[0]: data.split('=')[1] for data in temp.split('; ')}
@@ -168,7 +174,8 @@ class BilibiliSpider(scrapy.Spider):
                     item_list.append(video_item)
                 for item in range(len(item_list)):
                     req = scrapy.Request(url=item_list[item]['record_ur'], callback=self.get_video_details,
-                                         meta={'video_item': item_list[item], "item_list": item_list, "item_index": item+1,
+                                         meta={'video_item': item_list[item], "item_list": item_list,
+                                               "item_index": item + 1,
                                                'url_info': url_info, "req_index": BilibiliSpider.req_index},
                                          # req_config=self.req_config,
                                          dont_filter=True)
@@ -426,13 +433,22 @@ class BilibiliSpider(scrapy.Spider):
             # 总互动量(三连+转发+评论+弹幕)
             video_item["active_count"] = 0
             self.get_active_count(video_item)
-            url = f"https://api.bilibili.com/x/web-interface/card?mid={video_item['user_id']}&photo=true&web_location=333.788"
-            req = scrapy.Request(url=url, callback=self.get_user_card,
-                                 meta={'item': video_item, "req_index": BilibiliSpider.req_index},
-                                 dont_filter=True)
-            BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
-            BilibiliSpider.req_index += 1
-            yield req
+            yield self.send_user_card(video_item)
+            # now_time = int(time.time())
+            # print(self.bilibili_user_dicts[video_item["user_id"]])
+            # user_id = str(video_item['user_id'])
+            # if user_id not in self.bilibili_user_dicts or eval(self.bilibili_user_dicts[user_id])[
+            #     "save_time"] < now_time - 86400 * 30:
+            #     url = f"https://api.bilibili.com/x/web-interface/card?mid={video_item['user_id']}&photo=true&web_location=333.788"
+            #     req = scrapy.Request(url=url, callback=self.get_user_card,
+            #                          meta={'item': video_item, "req_index": BilibiliSpider.req_index},
+            #                          dont_filter=True)
+            #     BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
+            #     BilibiliSpider.req_index += 1
+            #     yield req
+            # else:
+            #     yield self.get_redis_userinfo(video_item)
+
         # up主id
         # upper_id = data["upper"]["mid"]
         # 置顶的评论单独放在一个数据里,且只需要首次获取一次
@@ -567,16 +583,23 @@ class BilibiliSpider(scrapy.Spider):
         # 评论人mid
         comment_item["user_id"] = comment["member"]["mid"]
         logging.info("去拿用户信息")
-        url = f"https://api.bilibili.com/x/web-interface/card?mid={comment_item['user_id']}&photo=true&web_location=333.788"
-        req_index = BilibiliSpider.req_index
-        BilibiliSpider.req_index += 1
-        req = scrapy.Request(url=url, callback=self.get_user_card,
-                             meta={'item': comment_item, "req_index": req_index},
-                             # meta={'item': comment_item},
-                             dont_filter=True)
-        BilibiliSpider.not_req_list[req_index] = req
-        # BilibiliSpider.req_index += 1
-        return req
+        return self.send_user_card(comment_item)
+        # now_time = int(time.time())
+        # user_id = str(comment_item['user_id'])
+        # if user_id not in self.bilibili_user_dicts or eval(self.bilibili_user_dicts[user_id])[
+        #     "save_time"] < now_time - 86400 * 30:
+        #     url = f"https://api.bilibili.com/x/web-interface/card?mid={comment_item['user_id']}&photo=true&web_location=333.788"
+        #     req_index = BilibiliSpider.req_index
+        #     BilibiliSpider.req_index += 1
+        #     req = scrapy.Request(url=url, callback=self.get_user_card,
+        #                          meta={'item': comment_item, "req_index": req_index},
+        #                          # meta={'item': comment_item},
+        #                          dont_filter=True)
+        #     BilibiliSpider.not_req_list[req_index] = req
+        #     # BilibiliSpider.req_index += 1
+        #     return req
+        # else:
+        #     yield self.get_redis_userinfo(comment_item)
 
     # 获取用户名片（评论人信息）
     def get_user_card(self, response):
@@ -685,13 +708,20 @@ class BilibiliSpider(scrapy.Spider):
                 article_item["tag"] = [item["name"] for item in tag_list]
             # 专栏up主用户id
             article_item["user_id"] = article_html_json["readInfo"]["author"]["mid"]
-            url = f"https://api.bilibili.com/x/web-interface/card?mid={article_item['user_id']}&photo=true&web_location=333.788"
-            req = scrapy.Request(url=url, callback=self.get_user_card,
-                                 meta={'item': article_item, "req_index": BilibiliSpider.req_index},
-                                 dont_filter=True)
-            BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
-            BilibiliSpider.req_index += 1
-            yield req
+            yield self.send_user_card(article_item)
+            # now_time = int(time.time())
+            # user_id = str(article_item['user_id'])
+            # if user_id not in self.bilibili_user_dicts or eval(self.bilibili_user_dicts[user_id])[
+            #     "save_time"] < now_time - 86400 * 30:
+            #     url = f"https://api.bilibili.com/x/web-interface/card?mid={article_item['user_id']}&photo=true&web_location=333.788"
+            #     req = scrapy.Request(url=url, callback=self.get_user_card,
+            #                          meta={'item': article_item, "req_index": BilibiliSpider.req_index},
+            #                          dont_filter=True)
+            #     BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
+            #     BilibiliSpider.req_index += 1
+            #     yield req
+            # else:
+            #     yield self.get_redis_userinfo(article_item)
             logging.info("专栏界面基础信息拿完，开始拿评论")
             first_page_pagination_str = {"offset": ""}
             pagination_str = Util.pagination_str(first_page_pagination_str)
@@ -756,13 +786,20 @@ class BilibiliSpider(scrapy.Spider):
                 logging.info(
                     f"发布时间：{dynamic_item['msg_time']} out of range start_time:{self.start_time},end_time:{self.end_time}")
                 return
-            url = f"https://api.bilibili.com/x/web-interface/card?mid={dynamic_item['user_id']}&photo=true&web_location=333.788"
-            req = scrapy.Request(url=url, callback=self.get_user_card,
-                                 meta={'item': dynamic_item, "req_index": BilibiliSpider.req_index},
-                                 dont_filter=True)
-            BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
-            BilibiliSpider.req_index += 1
-            yield req
+            yield self.send_user_card(dynamic_item)
+            # now_time = int(time.time())
+            # user_id = str(dynamic_item['user_id'])
+            # if user_id not in self.bilibili_user_dicts or eval(self.bilibili_user_dicts[user_id])[
+            #             "save_time"] < now_time - 86400 * 30:
+            #     url = f"https://api.bilibili.com/x/web-interface/card?mid={dynamic_item['user_id']}&photo=true&web_location=333.788"
+            #     req = scrapy.Request(url=url, callback=self.get_user_card,
+            #                          meta={'item': dynamic_item, "req_index": BilibiliSpider.req_index},
+            #                          dont_filter=True)
+            #     BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
+            #     BilibiliSpider.req_index += 1
+            #     yield req
+            # else:
+            #     yield self.get_redis_userinfo(dynamic_item)
             logging.info("开始抓评论")
             oid = dynamic_item["target_obj_id"]
             dynamic_type = dynamic_info["basic"]["comment_type"]
@@ -850,7 +887,7 @@ class BilibiliSpider(scrapy.Spider):
         # 专栏转发量
         dynamic_item["share_count"] = dynamic_info["modules"]["module_stat"]["forward"]["count"]
         # 专栏互动量（没有投币和收藏？）
-        dynamic_item["active_count"]=0
+        dynamic_item["active_count"] = 0
         self.get_active_count(dynamic_item)
         # 专栏up主用户id
         dynamic_item["user_id"] = uid
@@ -942,13 +979,20 @@ class BilibiliSpider(scrapy.Spider):
             # if not self.check_time(timestamp):
             #     return
             logging.info("去拿用户信息")
-            url = f"https://api.bilibili.com/x/web-interface/card?mid={comment_item['user_id']}&photo=true&web_location=333.788"
-            req = scrapy.Request(url=url, callback=self.get_user_card,
-                                 meta={'item': comment_item, "req_index": BilibiliSpider.req_index},
-                                 dont_filter=True)
-            BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
-            BilibiliSpider.req_index += 1
-            yield req
+            yield self.send_user_card(comment_item)
+            # now_time = int(time.time())
+            # user_id = str(comment_item['user_id'])
+            # if user_id not in self.bilibili_user_dicts or eval(self.bilibili_user_dicts[user_id])[
+            #             "save_time"] < now_time - 86400 * 30:
+            #     url = f"https://api.bilibili.com/x/web-interface/card?mid={comment_item['user_id']}&photo=true&web_location=333.788"
+            #     req = scrapy.Request(url=url, callback=self.get_user_card,
+            #                          meta={'item': comment_item, "req_index": BilibiliSpider.req_index},
+            #                          dont_filter=True)
+            #     BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
+            #     BilibiliSpider.req_index += 1
+            #     yield req
+            # else:
+            #     yield self.get_redis_userinfo(comment_item)
             # 判断评论是否有子评论
             sub_reply_num = int(comment["reply_count"])
             comment_no = comment["comment_no"]
@@ -991,7 +1035,7 @@ class BilibiliSpider(scrapy.Spider):
             req_url = url + reply_sign + "&sign=" + sign
             req = scrapy.Request(url=req_url, callback=self.get_biligime_comment,
                                  meta={"url_info": response.meta["url_info"],
-                                       "page_index": page_index, "comment_count": comment_count - 10,"oid": oid,
+                                       "page_index": page_index, "comment_count": comment_count - 10, "oid": oid,
                                        "req_index": BilibiliSpider.req_index},
                                  dont_filter=True)
             BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
@@ -1037,7 +1081,25 @@ class BilibiliSpider(scrapy.Spider):
         data = resp_json["data"]
         if data["list"]:
             for sub_reply in data["list"]:
-                yield self.get_biligame_single_reply(sub_reply, reply_type="子评论", oid=response.meta["oid"])
+                # yield self.get_biligame_single_reply(sub_reply, reply_type="子评论", oid=response.meta["oid"])
+                comment_item = self.get_biligame_single_reply(sub_reply, reply_type="子评论", oid=response.meta["oid"])
+                yield self.send_user_card(comment_item)
+                # now_time = int(time.time())
+                # user_id = str(comment_item['user_id'])
+                # if user_id not in self.bilibili_user_dicts or eval(self.bilibili_user_dicts[user_id])[
+                #             "save_time"] < now_time - 86400 * 30:
+                #     url = f"https://api.bilibili.com/x/web-interface/card?mid={comment_item['user_id']}&photo=true&web_location=333.788"
+                #     req = scrapy.Request(url=url, callback=self.get_user_card,
+                #                          meta={'item': comment_item, "req_index": BilibiliSpider.req_index},
+                #                          dont_filter=True)
+                #     BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
+                #     BilibiliSpider.req_index += 1
+                #     print(222222222222222222222222222222)
+                #     print(comment_item['user_id'])
+                #     print(self.bilibili_user_dicts)
+                #     yield req
+                # else:
+                #     yield self.get_redis_userinfo(comment_item)
 
     # def check_time(self, publish_time, days_ago):
     #     run_time = datetime.fromtimestamp(self.run_time).date()
@@ -1067,3 +1129,37 @@ class BilibiliSpider(scrapy.Spider):
             item["active_count"] += int(item["barrage_count"])
         if "mark_count" in item and item["mark_count"]:
             item["active_count"] += int(item["mark_count"])
+
+    # 从redis数据里获取用户信息
+    def get_redis_userinfo(self,item):
+        print("11111111111111111111111111111111111111111")
+        print(item["user_id"])
+        item_user_info = json.loads(self.bilibili_user_dicts[str(item["user_id"])])
+        print(item_user_info)
+        item["user_level"] = item_user_info["user_level"]
+        item["fans_count"] = item_user_info["fans_count"]
+        item["interest_count"] = item_user_info["interest_count"]
+        item["user_likes"] = item_user_info["user_likes"]
+        item["user_describe"] = item_user_info["user_describe"]
+        item["user_member"] = item_user_info["user_member"]
+        item["user_homepage"] = item_user_info["user_homepage"]
+        print(item)
+        return item
+
+    def send_user_card(self,item):
+        now_time = int(time.time())
+        user_id = str(item['user_id'])
+        if user_id not in self.bilibili_user_dicts or json.loads(self.bilibili_user_dicts[user_id])[
+            "save_time"] < now_time - 86400 * 30:
+            url = f"https://api.bilibili.com/x/web-interface/card?mid={item['user_id']}&photo=true&web_location=333.788"
+            req = scrapy.Request(url=url, callback=self.get_user_card,
+                                 meta={'item': item, "req_index": BilibiliSpider.req_index},
+                                 dont_filter=True)
+            BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
+            BilibiliSpider.req_index += 1
+            print(222222222222222222222222222222)
+            print(item['user_id'])
+            print(self.bilibili_user_dicts)
+            return req
+        else:
+            return self.get_redis_userinfo(item)

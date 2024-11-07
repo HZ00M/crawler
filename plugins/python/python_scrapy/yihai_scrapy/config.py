@@ -99,3 +99,13 @@ sql_config = {
     "host": "postgres" if not locast_debug else "10.100.16.111",
     "port": 5432
 }
+
+# redis参数
+redis_config = {
+    "host":"10.100.16.103",
+    "port":30379,
+    "db":0,
+    "decode_responses":True,
+    # 用户存储的key
+    "bilibili":"bilibili:user"
+}
