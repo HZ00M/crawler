@@ -123,14 +123,19 @@ class RandomProxy:
     def process_request(self, request, spider):
         if "rerun" in request.meta:
             logging.info("重发中，重发中")
-        # 不分请求不需要随机ip(主要需要随机的是高频次调用的，如访问用户名片)
+        # 部分请求不需要随机ip(主要需要随机的是高频次调用的，如访问用户名片)
         if "randomProxy" in request.meta:
             if not request.meta["randomProxy"]:
                 logging.info("不需要随机")
                 return
+        # if "random_ua" in request.meta and not request.meta["random_ua"]:
+        #     if not request.meta["random_ua"]:
+        #         logging.info("不需要随机")
+
         # 随机请求头
         ua = random.choice(USER_AGENT_List)
         request.headers["User-Agent"] = ua
+        logging.info(ua)
         # 获取一个随机ip
         proxy = IpProxy.get_proxy()
         # 对代理进行加密认证
@@ -225,17 +230,17 @@ class TwistedMiddleware:
         self.start_time = time.time()
         self.spider = spider
         logging.info(f"req : {request.url}")
-        logging.info(f"spider.index : {spider.req_index}")
+        # logging.info(f"spider.index : {spider.req_index}")
         logging.info(f"request.meta: {request.meta}")
         if "req_index" in request.meta:
             try:
                 logging.info(f"self.index: {self.index}")
-                logging.info(request.meta["req_index"])
+                logging.info(f"req_index: {request.meta['req_index']}")
                 self.index += 1
                 self.spider.not_req_list.pop(request.meta["req_index"])
             except:
-                logging.info("取消发送请求")
-                raise IgnoreRequest("请求已被取消")
+                logging.info(f"重复发送的请求req : {request.url}")
+                # raise IgnoreRequest("请求已被取消")
         else:
             logging.info("正常情况，日志到不了这里，但是弱网情况，有小概率有bug，部分请求首次过来的时候，req_index参数丢了，但是其他参数又还在，重发参数又在了，就离谱")
             logging.info(request.url)
