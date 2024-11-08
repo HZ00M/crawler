@@ -64,8 +64,8 @@ type JobExecute struct {
 	Namespace       string `gorm:"type:varchar(255)"`
 	Image           string `gorm:"type:varchar(255)"`
 	Command         string `gorm:"type:varchar(255)"`
-	ExeArgs         string `gorm:"type:varchar(255)"`
-	EnvArgs         string `gorm:"type:varchar(255)"`
+	ExeArgs         string `gorm:"type:text"`
+	EnvArgs         string `gorm:"type:text"`
 	Cron            string `gorm:"type:varchar(255)"`
 	ResultTableName string `gorm:"type:varchar(255);default:'t_job_record'"  json:"result_table_name"`
 	DataSize        int    `json:"data_size"`

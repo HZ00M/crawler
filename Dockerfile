@@ -51,14 +51,7 @@ COPY --from=builder /app/myapp .
 #COPY --from=builder /app/conf ./conf
 COPY --from=builder /app/plugins ./plugins
 
-# 添加 bridge-nf-call-iptables 和 bridge-nf-call-ip6tables 的设置
-#RUN echo "net.bridge.bridge-nf-call-iptables=1" >> /etc/sysctl.conf && \
-#    echo "net.bridge.bridge-nf-call-ip6tables=1" >> /etc/sysctl.conf && \
-#    echo "net.ipv4.ip_forward=1" >> /etc/sysctl.conf && \
-#    echo "net.ipv4.tcp_keepalive_time = 600" >> /etc/sysctl.conf && \
-#    echo "net.ipv4.tcp_keepalive_intvl = 30" >> /etc/sysctl.conf && \
-#    echo "net.ipv4.tcp_keepalive_probes = 10" >> /etc/sysctl.conf && \
-#    sysctl -p
+
 COPY --from=builder /app/start.sh ./start.sh
 # 将启动脚本复制到镜像中
 RUN chmod +x start.sh

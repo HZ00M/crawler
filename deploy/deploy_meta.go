@@ -3,14 +3,11 @@ package deploy
 import (
 	"embed"
 	"fmt"
-	"strings"
 
 	"syyx.com/crawler/pkg/k8sutil"
 
 	v1 "k8s.io/api/batch/v1"
 	"k8s.io/api/batch/v1beta1"
-	v1Beta "k8s.io/api/batch/v1beta1"
-	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/yaml"
 	"syyx.com/crawler/pkg/logging"
 )
@@ -85,83 +82,6 @@ func Deploy(conf *DeployJobConf) bool {
 	}
 	logging.Info("Deploy success %v %v", conf, ret)
 	return true
-}
-
-// 动态设置模板值
-func appendCronJobValuesBeta(job *v1Beta.CronJob, conf *DeployJobConf) {
-	parallel := int32(conf.Parallel)
-	executeId := fmt.Sprintf("%d", conf.ExecuteID)
-	job.ObjectMeta.Name = conf.JobName
-	job.ObjectMeta.Namespace = conf.Namespace
-	job.ObjectMeta.Labels["execute-id"] = executeId
-	// job.ObjectMeta.Labels["app-group"] = conf.AppName
-	// job.ObjectMeta.Labels["job-group"] = conf.JobName
-	job.Spec.Schedule = conf.Cron
-	job.Spec.JobTemplate.Spec.Parallelism = &parallel
-	job.Spec.JobTemplate.Spec.Completions = &parallel
-	job.Spec.JobTemplate.Spec.Template.ObjectMeta.Labels["execute-id"] = executeId
-	job.Spec.JobTemplate.Spec.Template.ObjectMeta.Labels["app-group"] = conf.AppName
-	job.Spec.JobTemplate.Spec.Template.ObjectMeta.Labels["job-group"] = conf.JobName
-	job.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Image = conf.ImageName
-	job.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Name = conf.AppName
-	if conf.Command != "" {
-		command := strings.Split(conf.Command, "\t") //[]string{"/bin/sh", "-c"}
-		job.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Command = command
-	}
-	args := strings.Split(conf.Args, "	") //[]string{args}
-	job.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Args = args
-	envPairs := strings.Split(conf.Envs, "\t")
-	var envVars []corev1.EnvVar
-	// 遍历每个 KEY=VALUE 对，并转换为 v1.EnvVar 结构体
-	for _, pair := range envPairs {
-		parts := strings.SplitN(pair, "=", 2)
-		if len(parts) == 2 {
-			envVars = append(envVars, corev1.EnvVar{
-				Name:  parts[0],
-				Value: parts[1],
-			})
-		}
-	}
-	job.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Env = envVars
-
-}
-
-func appendCronJobValues(job *v1.CronJob, conf *DeployJobConf) {
-	parallel := int32(conf.Parallel)
-	executeId := fmt.Sprintf("%d", conf.ExecuteID)
-	job.ObjectMeta.Name = conf.JobName
-	job.ObjectMeta.Namespace = conf.Namespace
-	job.ObjectMeta.Labels["execute-id"] = executeId
-	// job.ObjectMeta.Labels["app-group"] = conf.AppName
-	// job.ObjectMeta.Labels["job-group"] = conf.JobName
-	job.Spec.Schedule = conf.Cron
-	job.Spec.JobTemplate.Spec.Parallelism = &parallel
-	job.Spec.JobTemplate.Spec.Completions = &parallel
-	job.Spec.JobTemplate.Spec.Template.ObjectMeta.Labels["execute-id"] = executeId
-	job.Spec.JobTemplate.Spec.Template.ObjectMeta.Labels["app-group"] = conf.AppName
-	job.Spec.JobTemplate.Spec.Template.ObjectMeta.Labels["job-group"] = conf.JobName
-	job.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Image = conf.ImageName
-	job.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Name = conf.AppName
-	if conf.Command != "" {
-		command := strings.Split(conf.Command, "\t") //[]string{"/bin/sh", "-c"}
-		job.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Command = command
-	}
-	args := strings.Split(conf.Args, "	") //[]string{args}
-	job.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Args = args
-	envPairs := strings.Split(conf.Envs, "\t")
-	var envVars []corev1.EnvVar
-	// 遍历每个 KEY=VALUE 对，并转换为 v1.EnvVar 结构体
-	for _, pair := range envPairs {
-		parts := strings.SplitN(pair, "=", 2)
-		if len(parts) == 2 {
-			envVars = append(envVars, corev1.EnvVar{
-				Name:  parts[0],
-				Value: parts[1],
-			})
-		}
-	}
-	job.Spec.JobTemplate.Spec.Template.Spec.Containers[0].Env = envVars
-
 }
 
 func loadJobTemplate() (*v1.Job, error) {

@@ -24,7 +24,7 @@ func (h CollyJobHandler) Deploy(conf *DeployJobConf) (ret bool, err error) {
 		logging.Error("loadJobTemplate error id %d name %s", conf.ExecuteID, conf.JobName)
 		return
 	}
-	appendJobValues(job, conf)
+	h.appendJobValues(job, conf)
 	var yamlData []byte
 	if yamlData, err = yaml.Marshal(*job); err != nil {
 		logging.Error("marshal yamlData error id %d name %s %v", conf.ExecuteID, conf.JobName, err)
@@ -39,7 +39,7 @@ func (h CollyJobHandler) Deploy(conf *DeployJobConf) (ret bool, err error) {
 }
 
 // 动态设置模板值
-func appendJobValues(job *batchv1.Job, conf *DeployJobConf) {
+func (h CollyJobHandler) appendJobValues(job *batchv1.Job, conf *DeployJobConf) {
 	parallel := int32(conf.Parallel)
 	job.ObjectMeta.Name = conf.JobName
 	job.ObjectMeta.Namespace = conf.Namespace
@@ -52,12 +52,12 @@ func appendJobValues(job *batchv1.Job, conf *DeployJobConf) {
 	job.Spec.Template.Spec.Containers[0].Image = conf.ImageName
 	job.Spec.Template.Spec.Containers[0].Name = conf.AppName
 	if conf.Command != "" {
-		command := strings.Split(conf.Command, "\t") //[]string{"/bin/sh", "-c"}
+		command := strings.Fields(conf.Command) //[]string{"/bin/sh", "-c"}
 		job.Spec.Template.Spec.Containers[0].Command = command
 	}
-	args := strings.Split(conf.Args, "\t") //[]string{args}
+	args := strings.Fields(conf.Args) //[]string{args}
 	job.Spec.Template.Spec.Containers[0].Args = args
-	envPairs := strings.Split(conf.Envs, "\t")
+	envPairs := strings.Fields(conf.Envs)
 	var envVars []corev1.EnvVar
 	// 遍历每个 KEY=VALUE 对，并转换为 v1.EnvVar 结构体
 	for _, pair := range envPairs {
