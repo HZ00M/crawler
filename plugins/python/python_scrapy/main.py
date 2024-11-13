@@ -6,11 +6,13 @@ import logging
 from yihai_scrapy import logger
 from yihai_scrapy.config import ip_config
 from yihai_scrapy.config import req_config
+from yihai_scrapy.cookies import ScrapyCookies
 
 
 def main():
-    current_path = os.getcwd()
-    venv_path = 'venv'
+    # current_path = os.getcwd()
+    # venv_path = 'venv'
+    sc = ScrapyCookies("bilibili")
     script_command = 'scrapy crawl '
     setting_command = ""
     config_list = sys.argv[1:]
@@ -31,11 +33,12 @@ def main():
             config_list_a.remove(run_type)
         if "cookies" in run_type:
             req_config["cookies"] = run_type.split("cookies=")[1]
+            sc.init_redis_cookies(req_config["cookies"])
             config_list_a.remove(run_type)
         if "DOWNLOAD_DELAY" in run_type:
             setting_command += f" -s {run_type}"
             config_list_a.remove(run_type)
-
+    sc.get_bilibili_cookies()
     # script_command += config_list[0]
     # config_list.pop(0)
     for config in config_list_a:
