@@ -1230,9 +1230,9 @@ class BilibiliSpider(scrapy.Spider):
                                  dont_filter=True)
             BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
             BilibiliSpider.req_index += 1
-            print(222222222222222222222222222222)
-            print(item['user_id'])
-            print(self.bilibili_user_dicts)
+            # print(222222222222222222222222222222)
+            # print(item['user_id'])
+            # print(self.bilibili_user_dicts)
             return req
         else:
             return self.get_redis_userinfo(item)
