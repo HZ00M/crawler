@@ -1205,10 +1205,10 @@ class BilibiliSpider(scrapy.Spider):
 
     # 从redis数据里获取用户信息
     def get_redis_userinfo(self, item):
-        print("11111111111111111111111111111111111111111")
-        print(item["user_id"])
+        # print("11111111111111111111111111111111111111111")
+        # print(item["user_id"])
         item_user_info = json.loads(self.bilibili_user_dicts[str(item["user_id"])])
-        print(item_user_info)
+        # print(item_user_info)
         item["user_level"] = item_user_info["user_level"]
         item["fans_count"] = item_user_info["fans_count"]
         item["interest_count"] = item_user_info["interest_count"]
@@ -1216,7 +1216,7 @@ class BilibiliSpider(scrapy.Spider):
         item["user_describe"] = item_user_info["user_describe"]
         item["user_member"] = item_user_info["user_member"]
         item["user_homepage"] = item_user_info["user_homepage"]
-        print(item)
+        # print(item)
         return item
 
     def send_user_card(self, item):
