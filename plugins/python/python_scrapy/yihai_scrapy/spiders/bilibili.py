@@ -314,29 +314,6 @@ class BilibiliSpider(scrapy.Spider):
         video_item['data_type'] = "视频"
         # 视频发布时间
         video_item['msg_time'] = response.xpath(Page.posted_time).extract_first()
-        # 如果发布时间不满足筛选需要，结束
-        # 转换为 datetime 对象
-        # dt = datetime.strptime(video_item['msg_time'], "%Y-%m-%d %H:%M:%S")
-        # # 转换为时间戳
-        # timestamp = int(time.mktime(dt.timetuple()))
-        # if not self.check_time(timestamp):
-        # if timestamp < self.start_time:
-        #     logging.info(f"发布时间：{timestamp} out of range start_time:{self.start_time},end_time:{self.end_time}")
-        #     return
-        # # 发布时间满足筛选需求，就继续去遍历下一个视频
-        # if len(item_list) > item_index:
-        #     logging.info("next video")
-        #     next_video_item = item_list[item_index]
-        #     logging.info(len(item_list))
-        #     logging.info(next_video_item['record_ur'])
-        #     req = scrapy.Request(url=next_video_item['record_ur'], callback=self.get_video_details,
-        #                          meta={'video_item': next_video_item, "item_list": item_list, 'url_info': url_info,
-        #                                "item_index": item_index + 1, "req_index": BilibiliSpider.req_index},
-        #                          # req_config=self.req_config,
-        #                          dont_filter=True)
-        #     BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
-        #     BilibiliSpider.req_index += 1
-        #     yield req
         # 如果没有下一页，则去拿
         if item_list <= item_index:
             logging.info("next page")
@@ -354,15 +331,11 @@ class BilibiliSpider(scrapy.Spider):
             BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
             BilibiliSpider.req_index += 1
             yield req
-        # if timestamp > self.end_time:
-        #     logging.info(f"发布时间：{timestamp} out of range start_time:{self.start_time},end_time:{self.end_time}")
-        #     return
-        # yield video_item
+        # 判断是否有屏蔽字，有屏蔽字的视频不处理
         for ignore in self.ignore_word:
             if ignore in video_item["title"]:
                 logging.info(f"视频标题：{video_item['title']}含有屏蔽字：{ignore},跳过")
                 return
-        # return
         # 视频发布人名字
         name = response.xpath(Page.up_name).extract_first()
         # 去掉默认的换行符，空字符
@@ -376,39 +349,31 @@ class BilibiliSpider(scrapy.Spider):
         video_item['tag'] = response.xpath(Page.video_tag).extract()
         # 视频话题
         video_item['subject'] = response.xpath(Page.video_topic).extract()
-        # 视频评论数
-        # video_item['comments_count'] = response.xpath(Page.video_comment_num).extract_first()
-        # 视频三连数量定位
-        video_info = response.xpath(Page.video_heat).extract_first()
-        # video_info = video_info.split("尽在哔哩哔哩bilibili ")[-1].split(", 视频作者")[0] # 这种有时候取不到，可能是有些视频违规，不能分享，所以分享信息里没有关键字
-        video_info = "视频播放量 " + video_info.split("视频播放量 ")[-1].split(", 视频作者")[0]
-        info_list = video_info.split("、")
-        # 视频播放量/弹幕量/点赞数/投币数/收藏人数/转发人数
-        video_config = {"视频播放量": "read_count", "弹幕量": "barrage_count", "点赞数": "like_count",
-                        "投硬币枚数": "coin_count", "收藏人数": "mark_count", "转发人数": "share_count"}
-        for info in info_list:
+        video_html_info = response.text
+        video_html_json = re.findall(r"window.__INITIAL_STATE__=(.*);\(function\(\)", video_html_info)
+        if video_html_json:
             try:
-                key, value = info.split(" ")
-                video_item[video_config[key]] = value
-            except:
+                video_json = json.loads(video_html_json[0])
+                stat = video_json["videoData"]["stat"]
+                video_item['target_obj_id'] = stat["aid"] # 分析对象id，依赖它去拿评论
+                oid = video_item['target_obj_id']
+                video_item['comments_count'] = stat["reply"] # 评论数量
+                video_item['read_count'] = stat["view"] # 视频播放量
+                video_item['barrage_count'] = stat["danmaku"] # 弹幕数
+                video_item['like_count'] = stat["like"] # 点赞数量
+                video_item['coin_count'] = stat["coin"] # 投币数量
+                video_item['mark_count'] = stat["favorite"] # 收藏数量
+                video_item['share_count'] = stat["share"] # 转发数量
+                video_item["active_count"] = 0
+                self.get_active_count(video_item)
+                yield self.send_user_card(video_item)
+            except Exception as e:
+                logging.error(e)
                 logging.info(f"获取互动数据失败，req.url:{response.url}")
-        # 主界面的内容抓完，开始构造评论的抓取
-        # 正则获取视频唯一标识oid，后续获取评论要用
-        matches = re.findall(r'oid=(\d+)', response.text)
-        if matches:
-            oid = matches[0]
-            video_item["target_obj_id"] = oid
-            # url = f"https://api.bilibili.com/x/web-interface/card?mid={video_item['user_id']}&photo=true&web_location=333.788"
-            # req = scrapy.Request(url=url, callback=self.get_user_card,
-            #                      meta={'item': video_item, "req_index": BilibiliSpider.req_index},
-            #                      dont_filter=True)
-            # BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
-            # BilibiliSpider.req_index += 1
-            # yield req
+                yield video_item
+                return
         else:
-            logging.info("未找到 oid")
-            yield video_item
-            return
+            logging.error(f"提取互动信息失败，video_html_json: {video_html_json}")
 
         logging.info(f"------------------- 视频{oid}详情页抓完了，开始抓评论 ------------------------")
 
@@ -451,32 +416,6 @@ class BilibiliSpider(scrapy.Spider):
             return
         data = resp_json["data"]
 
-        # 如果是首页，并且传了视频对象，获取完视频评论数量后，就返回视频数据
-        if response.meta["first_page"] and "video_item" in response.meta:
-            video_item = response.meta["video_item"]
-            if "all_count" in data["cursor"]:
-                video_item['comments_count'] = data["cursor"]["all_count"]
-            # 总互动量(三连+转发+评论+弹幕)
-            video_item["active_count"] = 0
-            self.get_active_count(video_item)
-            yield self.send_user_card(video_item)
-            # now_time = int(time.time())
-            # print(self.bilibili_user_dicts[video_item["user_id"]])
-            # user_id = str(video_item['user_id'])
-            # if user_id not in self.bilibili_user_dicts or eval(self.bilibili_user_dicts[user_id])[
-            #     "save_time"] < now_time - 86400 * 30:
-            #     url = f"https://api.bilibili.com/x/web-interface/card?mid={video_item['user_id']}&photo=true&web_location=333.788"
-            #     req = scrapy.Request(url=url, callback=self.get_user_card,
-            #                          meta={'item': video_item, "req_index": BilibiliSpider.req_index},
-            #                          dont_filter=True)
-            #     BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
-            #     BilibiliSpider.req_index += 1
-            #     yield req
-            # else:
-            #     yield self.get_redis_userinfo(video_item)
-
-        # up主id
-        # upper_id = data["upper"]["mid"]
         # 置顶的评论单独放在一个数据里,且只需要首次获取一次
         top_reply = data["top_replies"]
         if top_reply and response.meta["first_page"]:
