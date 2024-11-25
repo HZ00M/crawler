@@ -616,7 +616,11 @@ class BilibiliSpider(scrapy.Spider):
         article_html_json = json.loads(article_html_json[0])
         if article_html_json:
             if "readInfo" not in article_html_json and "detail" in article_html_json:
-                article_item["msg_time"] = article_html_json["detail"]["modules"][1]["module_author"]["pub_ts"]
+                for data in article_html_json["detail"]["modules"]:
+                    if "module_author" in data:
+                        if "pub_ts" in data["module_author"]:
+                            article_item["msg_time"] = data["module_author"]["pub_ts"]
+                            break
             else:
                 # 专栏发布时间
                 article_item["msg_time"] = article_html_json["readInfo"]["publish_time"]
