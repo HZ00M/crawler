@@ -1,0 +1,6 @@
+pyexecjs == 1.5.1
+psycopg2 == 2.9.9
+scrapy == 2.11.2
+scrapy-redis == 0.9.1
+pymysql == 1.1.1
+selenium == 4.25.0
