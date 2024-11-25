@@ -145,8 +145,8 @@ class BilibiliSpider(scrapy.Spider):
             url_info["scrapy_type"] = "video"
             url_info["page"] = 1
             url_info["num"] = 0
-            print(url_info)
-            print(type(url_info["url"]))
+            # print(url_info)
+            # print(type(url_info["url"]))
             self.start_urls.append(url_info)
 
     def start_requests(self):
@@ -154,7 +154,8 @@ class BilibiliSpider(scrapy.Spider):
         for url_info in self.start_urls:
             req = scrapy.Request(url=url_info["url"],
                                  callback=self.parse,
-                                 meta={'url_info': url_info, "req_index": BilibiliSpider.req_index},
+                                 meta={'url_info': json.dumps(url_info), "req_index": BilibiliSpider.req_index
+                                       },
                                  # req_config=self.req_config
                                  # dont_filter=True
                                  )
@@ -170,7 +171,7 @@ class BilibiliSpider(scrapy.Spider):
         #     f.close()
         # logging.info(response.body)
         # 根据url_type,执行不同的操作
-        url_info = response.meta["url_info"]
+        url_info = json.loads(response.meta["url_info"])
         url_type = url_info["scrapy_type"]
         logging.info(f"url_type : {url_type}")
         # 视频
@@ -188,7 +189,7 @@ class BilibiliSpider(scrapy.Spider):
                     req = scrapy.Request(url=item_list[item]['record_ur'], callback=self.get_video_details,
                                          meta={'video_item': item_list[item], "item_list": len(item_list),
                                                "item_index": item + 1,
-                                               'url_info': url_info, "req_index": BilibiliSpider.req_index},
+                                               'url_info': json.dumps(url_info), "req_index": BilibiliSpider.req_index},
                                          # req_config=self.req_config,
                                          dont_filter=True)
                     BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
@@ -233,7 +234,7 @@ class BilibiliSpider(scrapy.Spider):
 
                 req = scrapy.Request(url=item_list[0]['record_ur'], callback=self.get_article_details,
                                      meta={'article_item': item_list[0], "item_list": item_list, "item_index": 1,
-                                           'url_info': url_info, "req_index": BilibiliSpider.req_index},
+                                           'url_info': json.dumps(url_info), "req_index": BilibiliSpider.req_index},
                                      # req_config=self.req_config,
                                      dont_filter=True)
                 BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
@@ -250,7 +251,7 @@ class BilibiliSpider(scrapy.Spider):
             # 这里不能走随机请求头，不然会判定失败（大部分随机请求头对这个接口来说有点老，但是其他接口没事）
             req = scrapy.Request(url=url_info["url"],
                                  callback=self.get_dynamic_init_page,
-                                 meta={'url_info': url_info, "randomProxy": False,
+                                 meta={'url_info': json.dumps(url_info), "randomProxy": False,
                                        "req_index": BilibiliSpider.req_index, "update_cookies": True},
                                  cookies=self.cookies,
                                  dont_filter=True,
@@ -292,7 +293,7 @@ class BilibiliSpider(scrapy.Spider):
             sign = Util.biligame_comment_decryption(url_sign)
             url += url_sign + "&sign=" + sign
             req = scrapy.Request(url=url, callback=self.get_biligame_summer,
-                                 meta={"biliGame_item": biliGame_item, "url_info": url_info,
+                                 meta={"biliGame_item": biliGame_item, "url_info": json.dumps(url_info),
                                        "req_index": BilibiliSpider.req_index},
                                  dont_filter=True)
             BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
@@ -309,7 +310,7 @@ class BilibiliSpider(scrapy.Spider):
         video_item = response.meta['video_item']
         item_list = response.meta["item_list"]
         item_index = response.meta["item_index"]
-        url_info = response.meta["url_info"]
+        url_info = json.loads(response.meta["url_info"])
         video_item['data_type'] = "视频"
         # 视频发布时间
         video_item['msg_time'] = response.xpath(Page.posted_time).extract_first()
@@ -346,7 +347,7 @@ class BilibiliSpider(scrapy.Spider):
             url_info["num"] += item_list
             req = scrapy.Request(url=url_info["url"],
                                  callback=self.parse,
-                                 meta={'url_info': url_info,
+                                 meta={'url_info': json.dumps(url_info),
                                        "req_index": BilibiliSpider.req_index},
                                  # req_config=self.req_config
                                  )
@@ -666,7 +667,7 @@ class BilibiliSpider(scrapy.Spider):
         article_item = response.meta["article_item"]
         item_list = response.meta["item_list"]
         item_index = response.meta["item_index"]
-        url_info = response.meta["url_info"]
+        url_info = json.loads(response.meta["url_info"])
         # 数据类型
         article_item["data_type"] = "专栏"
         # 专栏的所有信息字符串
@@ -678,7 +679,7 @@ class BilibiliSpider(scrapy.Spider):
             if "readInfo" not in article_html_json and "detail" in article_html_json:
                 article_item["msg_time"] = article_html_json["detail"]["modules"][1]["module_author"]["pub_ts"]
             else:
-            # 专栏发布时间
+                # 专栏发布时间
                 article_item["msg_time"] = article_html_json["readInfo"]["publish_time"]
             # 这里要单独排除一下置顶的
             if self.start_time > int(article_item["msg_time"]):
@@ -693,7 +694,7 @@ class BilibiliSpider(scrapy.Spider):
                 logging.info(f"next video url:{next_video_item['record_ur']}")
                 req = scrapy.Request(url=next_video_item['record_ur'], callback=self.get_article_details,
                                      meta={'article_item': next_video_item, "item_list": item_list,
-                                           'url_info': url_info,
+                                           'url_info': json.dumps(url_info),
                                            "item_index": item_index + 1, "req_index": BilibiliSpider.req_index},
                                      # req_config=self.req_config,
                                      dont_filter=True)
@@ -708,7 +709,7 @@ class BilibiliSpider(scrapy.Spider):
                 url_info['page'] += 1
                 req = scrapy.Request(url=url_info["url"],
                                      callback=self.parse,
-                                     meta={'url_info': url_info, "req_index": BilibiliSpider.req_index},
+                                     meta={'url_info': json.dumps(url_info), "req_index": BilibiliSpider.req_index},
                                      # req_config=self.req_config
                                      )
                 BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
@@ -722,21 +723,21 @@ class BilibiliSpider(scrapy.Spider):
                 logging.info(f"redirection req, new req: {response.url}")
                 modules_list = article_html_json["detail"]["modules"]
                 # 专栏标题
-                article_item["data_type"] = self.get_dict_key(modules_list,"module_title")["text"]
+                article_item["data_type"] = self.get_dict_key(modules_list, "module_title")["text"]
                 # 专栏发布人
-                article_item["author"] = self.get_dict_key(modules_list,"module_author")["name"]
+                article_item["author"] = self.get_dict_key(modules_list, "module_author")["name"]
                 # 专栏浏览量
                 # article_item["read_count"] = article_html_json["readInfo"]["stats"]["view"]
                 # 专栏点赞量
-                article_item["like_count"] = self.get_dict_key(modules_list,"module_stat")["like"]["count"]
+                article_item["like_count"] = self.get_dict_key(modules_list, "module_stat")["like"]["count"]
                 # 专栏评论量
-                article_item["comments_count"] = self.get_dict_key(modules_list,"module_stat")["comment"]["count"]
+                article_item["comments_count"] = self.get_dict_key(modules_list, "module_stat")["comment"]["count"]
                 # 专栏收藏量
-                article_item["mark_count"] = self.get_dict_key(modules_list,"module_stat")["favorite"]["count"]
+                article_item["mark_count"] = self.get_dict_key(modules_list, "module_stat")["favorite"]["count"]
                 # 专栏投币量
-                article_item["coin_count"] = self.get_dict_key(modules_list,"module_stat")["coin"]["count"]
+                article_item["coin_count"] = self.get_dict_key(modules_list, "module_stat")["coin"]["count"]
                 # 专栏转发人数
-                article_item["share_count"] = self.get_dict_key(modules_list,"module_stat")["forward"]["count"]
+                article_item["share_count"] = self.get_dict_key(modules_list, "module_stat")["forward"]["count"]
                 # 专栏互动量（三连+转发+评论）
                 article_item["active_count"] = 0
                 self.get_active_count(article_item)
@@ -745,7 +746,7 @@ class BilibiliSpider(scrapy.Spider):
                 #     tag_list = article_html_json["readInfo"]["tags"]
                 #     article_item["tag"] = [item["name"] for item in tag_list]
                 # 专栏up主用户id
-                article_item["user_id"] = self.get_dict_key(modules_list,"module_author")["mid"]
+                article_item["user_id"] = self.get_dict_key(modules_list, "module_author")["mid"]
                 yield self.send_user_card(article_item)
             else:
                 # 专栏标题
@@ -831,8 +832,8 @@ class BilibiliSpider(scrapy.Spider):
             return None
 
     def get_dynamic_init_page(self, response):
-        url_info = response.meta["url_info"]
-        config = response.meta["url_info"]["config"]
+        url_info = json.loads(response.meta["url_info"])
+        config = url_info["config"]
         resp_json = json.loads(response.body)
         if resp_json["code"] != 0:
             logging.info(resp_json)
@@ -908,7 +909,7 @@ class BilibiliSpider(scrapy.Spider):
             headers = {"referer": None}
             req = scrapy.Request(url=url_info["url"],
                                  callback=self.get_dynamic_init_page,
-                                 meta={'url_info': url_info, "randomProxy": True,
+                                 meta={'url_info': json.dumps(url_info), "randomProxy": True,
                                        "req_index": BilibiliSpider.req_index},
                                  cookies=self.cookies,
                                  dont_filter=True,
@@ -968,6 +969,7 @@ class BilibiliSpider(scrapy.Spider):
 
     # 获取游戏中心评分，评论数
     def get_biligame_summer(self, response):
+        url_info = json.loads(response.meta["url_info"])
         resp_json = json.loads(response.body)
         if resp_json["code"] != 0:
             logging.info("get biligame_summer error")
@@ -977,9 +979,9 @@ class BilibiliSpider(scrapy.Spider):
         biliGame_item["mark"] = resp_json["data"]["grade"]
         # 游戏评论数
         biliGame_item["comments_count"] = resp_json["data"]["comment_number"]
-        url = url_config["biliGame"]["game_info"].format(id=response.meta["url_info"]["config"]["gameId"])
+        url = url_config["biliGame"]["game_info"].format(id=url_info["config"]["gameId"])
         req = scrapy.Request(url=url, callback=self.get_biligame_gameinfo,
-                             meta={"biliGame_item": biliGame_item, "url_info": response.meta["url_info"],
+                             meta={"biliGame_item": biliGame_item, "url_info": json.dumps(url_info),
                                    "req_index": BilibiliSpider.req_index},
                              dont_filter=True)
         BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
@@ -994,7 +996,7 @@ class BilibiliSpider(scrapy.Spider):
             return
         biliGame_item = response.meta["biliGame_item"]
         oid = biliGame_item["target_obj_id"]
-        url_info = response.meta["url_info"]
+        url_info = json.loads(response.meta["url_info"])
         # 游戏下载量
         biliGame_item["download_count"] = resp_json["data"]["download_count"]
         # 游戏预约量
@@ -1017,7 +1019,7 @@ class BilibiliSpider(scrapy.Spider):
         sign = Util.biligame_comment_decryption(reply_sign)
         req_url = url + reply_sign + "&sign=" + sign
         req = scrapy.Request(url=req_url, callback=self.get_biligime_comment,
-                             meta={"url_info": response.meta["url_info"],
+                             meta={"url_info": json.dumps(url_info),
                                    "page_index": page_index, "comment_count": comment_count - 10, "oid": oid,
                                    "req_index": BilibiliSpider.req_index},
                              dont_filter=True)
@@ -1033,7 +1035,7 @@ class BilibiliSpider(scrapy.Spider):
             logging.info("get biligime comment error")
             return
         data = resp_json["data"]
-        url_info = response.meta["url_info"]
+        url_info = json.loads(response.meta["url_info"])
         oid = response.meta["oid"]
         # 每一页的评论内容
         # print(data)
@@ -1085,7 +1087,7 @@ class BilibiliSpider(scrapy.Spider):
                 sign = Util.biligame_comment_decryption(reply_sign)
                 req_url = url + reply_sign + "&sign=" + sign
                 req = scrapy.Request(url=req_url, callback=self.get_sub_biligame_comment,
-                                     meta={"url_info": response.meta["url_info"],
+                                     meta={"url_info": json.dumps(url_info),
                                            "page_index": page_index, "oid": oid, "req_index": BilibiliSpider.req_index},
                                      dont_filter=True)
                 BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
@@ -1107,7 +1109,7 @@ class BilibiliSpider(scrapy.Spider):
             sign = Util.biligame_comment_decryption(reply_sign)
             req_url = url + reply_sign + "&sign=" + sign
             req = scrapy.Request(url=req_url, callback=self.get_biligime_comment,
-                                 meta={"url_info": response.meta["url_info"],
+                                 meta={"url_info": json.dumps(url_info),
                                        "page_index": page_index, "comment_count": comment_count - 10, "oid": oid,
                                        "req_index": BilibiliSpider.req_index},
                                  dont_filter=True)
@@ -1237,7 +1239,7 @@ class BilibiliSpider(scrapy.Spider):
         else:
             return self.get_redis_userinfo(item)
 
-    def get_dict_key(self,lists,keys):
+    def get_dict_key(self, lists, keys):
         for dicts in lists:
             if keys in dicts:
                 return dicts[keys]
