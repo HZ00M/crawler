@@ -25,7 +25,7 @@ scrapy_config = {
         "app_key": "h9Ejat5tFh81cq8V",  # b站里的游戏appkey，拿评论要用到
     },
     "新月同行": {
-        "name": "无悔华夏",
+        "name": "新月同行",
         "video": True,  # 是否抓取视频
         "article": True,  # 是否抓取专栏
         "dynamic": True,  # 是否抓取动态
@@ -39,8 +39,7 @@ scrapy_config = {
 
 # 请求参数,目前主要是cookies,2天更新一次
 req_config = {
-    "cookies": "SESSDATA=54d15251%2C1746535415%2Ce25fa%2Ab1CjBNmX8RhMevvxxQyH2xvB_lzIBEpCorkeGrKKW6xc14Jhy4utsrLEQ8q4ljPiNIPS8SVk9wcVhTMUNlOExlZng3cTVEXzltODU4V05JaTViSWtnZk5OcUIwd213UVhNeWhXZlJGWkpjUnZfQTRBVnZJMEVKOTFTY2JuazlHcTdoQ2lKM3FGVkFBIIEC"
-}
+    "cookies": "SESSDATA=8c87db3a%2C1746862094%2Cfab81%2Ab1CjAQCCTMf3l8R-KGk9A0NMgGVvh-FFsPt2SksJvYeh5GUZjCImSto9dgscDM-gClk3ASVnUzZnRIUDVoRUlhZmhFMk5XbDZvcFBabXJ6MFUybWRoUWZaUy11bnI3VTRzLU90QzUxYVN2TkpsOHExN2Qzd1oyczhYRUl4dU40ZFFNdjM2Nmhtd05RIIEC"}
 
 # 各个页面网址相关
 url_config = {
