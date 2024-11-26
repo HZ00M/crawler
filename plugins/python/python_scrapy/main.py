@@ -53,6 +53,6 @@ def main():
 
 
 if __name__ == '__main__':
-    runstr = "scrapy crawl bilibili -a key_word=霓虹深渊 -a model=1"
-    os.system(runstr)
-    # main()
+    # runstr = "scrapy crawl bilibili -a key_word=霓虹深渊 -a model=1"
+    # os.system(runstr)
+    main()
