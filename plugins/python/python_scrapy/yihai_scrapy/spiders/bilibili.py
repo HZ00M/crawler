@@ -3,6 +3,11 @@ import logging
 import re
 import time
 from distutils.command.config import config
+# 解决execjs执行js时产生的乱码报错，需要在导入execjs模块之前，让popen的encoding参数锁定为utf-8
+import subprocess
+from functools import partial
+subprocess.Popen = partial(subprocess.Popen, encoding="utf-8")
+import execjs
 
 import scrapy
 
@@ -148,6 +153,8 @@ class BilibiliSpider(scrapy.Spider):
             # print(url_info)
             # print(type(url_info["url"]))
             self.start_urls.append(url_info)
+        # 存一个最后爬取视频的时间，搜索视频超过1000个的时候，修改这个值，再次进行搜索
+        self.last_time = self.end_time
 
     def start_requests(self):
         logging.info(self.start_urls)
@@ -177,35 +184,89 @@ class BilibiliSpider(scrapy.Spider):
         # 视频
         if url_type == "video":
             item_lists = response.xpath(Page.video_list)
-            logging.info(type(item_lists))
-            if item_lists:
-                item_list = []
-                for item in item_lists:
+            video_html_text = response.text
+            # 正则提取页面的js函数
+            page_video_data = re.findall(r'[window.](__pinia\s*=\s*\(function\([^)]*\)[^)]*\)[^<]*)', video_html_text)
+            if page_video_data:
+                # 使用execjs解析函数，得到完整的json数据
+                js_compile = execjs.compile(page_video_data[0])
+                # 转换成字典格式
+                video_json = js_compile.eval("__pinia")
+                page = video_json["searchTypeResponse"]["searchTypeResponse"]["page"] # 当前第几页
+                pagesize = video_json["searchTypeResponse"]["searchTypeResponse"]["pagesize"] # 每一页多少数据
+                numPages = video_json["searchTypeResponse"]["searchTypeResponse"]["numPages"] # 总共多少页
+                numResults = video_json["searchTypeResponse"]["searchTypeResponse"]["numResults"] # 总共搜索到多少视频
+                # 视频列表
+                item_list = video_json["searchTypeResponse"]["searchTypeResponse"]["result"]
+                for item in item_list:
                     video_item = NeonScrapyItem()
-                    video_item['title'] = item.xpath(Page.video_title).extract_first()
-                    video_item['record_ur'] = "https:" + item.xpath(Page.video_details).extract_first()
-                    item_list.append(video_item)
-                for item in range(len(item_list)):
-                    req = scrapy.Request(url=item_list[item]['record_ur'], callback=self.get_video_details,
-                                         meta={'video_item': item_list[item], "item_list": len(item_list),
-                                               "item_index": item + 1,
-                                               'url_info': json.dumps(url_info), "req_index": BilibiliSpider.req_index},
+                    video_item['title'] = item["title"].replace("<em class=\"keyword\">","").replace("</em>","") # 视频标题
+                    video_item['record_ur'] = "http://www.bilibili.com/video/" + item["bvid"] # 视频链接
+                    # 当前排序
+                    rank_index = item["rank_index"]
+                    if rank_index == numResults:
+                        # 更新最后一个视频的时间，后面如果要继续遍历，取这个时间戳
+                        self.last_time = item["pubdate"] -1
+                    req = scrapy.Request(url=video_item['record_ur'], callback=self.get_video_details,
+                                         meta={'video_item': video_item, "rank_index": rank_index,
+                                               "req_index": BilibiliSpider.req_index},
                                          # req_config=self.req_config,
                                          dont_filter=True)
                     BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
                     BilibiliSpider.req_index += 1
                     yield req
+                # 如果当前不是最后一页，则翻页去拿下一页
+                if page < numPages:
+                    logging.info(f"now_page:{page},max_page:{numPages}, 继续下一页")
+                    url_info["url"] = url_config["video"]["init_page"].format(keyword=self.key_word,
+                                                            page=page+1, num=pagesize*page,
+                                                            begin_time=self.start_time,
+                                                            end_time=self.end_time) + "&order=pubdate"
 
-                # req = scrapy.Request(url=item_list[0]['record_ur'], callback=self.get_video_details,
-                #                      meta={'video_item': item_list[0], "item_list": item_list, "item_index": 1,
-                #                            'url_info': url_info, "req_index": BilibiliSpider.req_index},
-                #                      # req_config=self.req_config,
-                #                      dont_filter=True)
-                # BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
-                # BilibiliSpider.req_index += 1
-                # yield req
+                    req = scrapy.Request(url=url_info["url"],
+                                         callback=self.parse,
+                                         meta={'url_info': json.dumps(url_info), "req_index": BilibiliSpider.req_index})
+                    BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
+                    BilibiliSpider.req_index += 1
+                    yield req
+                # 如果视频超过1000
+                elif page == numPages and numResults==1000:
+                    logging.info(f"搜索视频超过1000条，修改时间戳范围，继续搜索，last_time:{self.last_time}")
+                    url_info["url"] = url_config["video"]["init_page"].format(keyword=self.key_word,
+                                                                              page=1, num=0,
+                                                                              begin_time=self.start_time,
+                                                                              end_time=self.last_time) + "&order=pubdate"
+
+                    req = scrapy.Request(url=url_info["url"],
+                                         callback=self.parse,
+                                         meta={'url_info': json.dumps(url_info), "req_index": BilibiliSpider.req_index})
+                    BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
+                    BilibiliSpider.req_index += 1
+                    yield req
             else:
-                logging.info("未定位到视频主页面信息")
+                logging.error(f"视频主界面，未成功提取到数据，url:{url_info['url']}")
+
+            # logging.info(type(item_lists))
+            # if item_lists:
+            #     item_list = []
+            #     for item in item_lists:
+            #         video_item = NeonScrapyItem()
+            #         video_item['title'] = item.xpath(Page.video_title).extract_first()
+            #         video_item['record_ur'] = "https:" + item.xpath(Page.video_details).extract_first()
+            #         item_list.append(video_item)
+            #     for item in range(len(item_list)):
+            #         req = scrapy.Request(url=item_list[item]['record_ur'], callback=self.get_video_details,
+            #                              meta={'video_item': item_list[item], "item_list": len(item_list),
+            #                                    "item_index": item + 1,
+            #                                    'url_info': json.dumps(url_info), "req_index": BilibiliSpider.req_index},
+            #                              # req_config=self.req_config,
+            #                              dont_filter=True)
+            #         BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
+            #         BilibiliSpider.req_index += 1
+            #         yield req
+            #
+            # else:
+            #     logging.info("未定位到视频主页面信息")
         # 专栏的
         elif url_type == "article":
             # 获取专栏主页的
@@ -221,16 +282,6 @@ class BilibiliSpider(scrapy.Spider):
                     article_item["record_ur"] = url
                     article_item["target_obj_id"] = article_id
                     item_list.append(article_item)
-
-                # for item in range(len(item_list)):
-                #     req = scrapy.Request(url=item_list[item]['record_ur'], callback=self.get_article_details,
-                #                          meta={'article_item': item_list[item], "item_list": item_list, "item_index": item+1,
-                #                                'url_info': url_info, "req_index": BilibiliSpider.req_index},
-                #                          # req_config=self.req_config,
-                #                          dont_filter=True)
-                #     BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
-                #     BilibiliSpider.req_index += 1
-                #     yield req
 
                 req = scrapy.Request(url=item_list[0]['record_ur'], callback=self.get_article_details,
                                      meta={'article_item': item_list[0], "item_list": item_list, "item_index": 1,
@@ -308,29 +359,29 @@ class BilibiliSpider(scrapy.Spider):
         #     f.write(response.text)
         #     f.close()
         video_item = response.meta['video_item']
-        item_list = response.meta["item_list"]
-        item_index = response.meta["item_index"]
-        url_info = json.loads(response.meta["url_info"])
+        # item_list = response.meta["item_list"]
+        # item_index = response.meta["item_index"]
+        # url_info = json.loads(response.meta["url_info"])
         video_item['data_type'] = "视频"
         # 视频发布时间
         video_item['msg_time'] = response.xpath(Page.posted_time).extract_first()
         # 如果没有下一页，则去拿
-        if item_list <= item_index:
-            logging.info("next page")
-            url_info["url"] = url_info["url"].replace(f"page={url_info['page']}",
-                                                      f"page={url_info['page'] + 1}").replace(f"&o={url_info['num']}",
-                                                                                              f"&o={url_info['num'] + item_list}")
-            url_info['page'] += 1
-            url_info["num"] += item_list
-            req = scrapy.Request(url=url_info["url"],
-                                 callback=self.parse,
-                                 meta={'url_info': json.dumps(url_info),
-                                       "req_index": BilibiliSpider.req_index},
-                                 # req_config=self.req_config
-                                 )
-            BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
-            BilibiliSpider.req_index += 1
-            yield req
+        # if item_list <= item_index:
+        #     logging.info("next page")
+        #     url_info["url"] = url_info["url"].replace(f"page={url_info['page']}",
+        #                                               f"page={url_info['page'] + 1}").replace(f"&o={url_info['num']}",
+        #                                                                                       f"&o={url_info['num'] + item_list}")
+        #     url_info['page'] += 1
+        #     url_info["num"] += item_list
+        #     req = scrapy.Request(url=url_info["url"],
+        #                          callback=self.parse,
+        #                          meta={'url_info': json.dumps(url_info),
+        #                                "req_index": BilibiliSpider.req_index},
+        #                          # req_config=self.req_config
+        #                          )
+        #     BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
+        #     BilibiliSpider.req_index += 1
+        #     yield req
         # 判断是否有屏蔽字，有屏蔽字的视频不处理
         for ignore in self.ignore_word:
             if ignore in video_item["title"]:
@@ -374,8 +425,12 @@ class BilibiliSpider(scrapy.Spider):
                 return
         else:
             logging.error(f"提取互动信息失败，video_html_json: {video_html_json}")
+            return
 
         logging.info(f"------------------- 视频{oid}详情页抓完了，开始抓评论 ------------------------")
+        if video_item['comments_count'] == 0:
+            logging.info(f"一个评论都没有，不用往下抓了,url:{video_item['record_ur']}")
+            return
 
         # 构造首页页签参数pagination_str
         first_page_pagination_str = {"offset": ""}
@@ -496,7 +551,7 @@ class BilibiliSpider(scrapy.Spider):
         else:
             next_offset = None
         if not next_offset:
-            logging.info("no next page return")
+            logging.info("reply no next page, return")
             return
         else:
             offset = Util.pagination_str({"offset": next_offset})
