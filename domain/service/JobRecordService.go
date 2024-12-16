@@ -72,6 +72,8 @@ func (s *JobRecordService) CreateJobExecute(params map[string]interface{}) error
 		EndTime     string `json:"end_time"`
 		User        int    `json:"user_id"`
 		ParallelNum int    `json:"parallel_num"`
+		ProjectName string `json:"project_name"`
+		StorageFlag int    `json:"storage_flag"`
 	}
 	// 将 map 转换为 JSON 字符串
 	jsonData, err := json.Marshal(params)
@@ -109,6 +111,8 @@ func (s *JobRecordService) CreateJobExecute(params map[string]interface{}) error
 		ResultTableName: entity.RecordTableName, // 根据需要设定，或者从参数中获取
 		JobType:         jobTypeInt,
 		ParallelNum:     req.ParallelNum,
+		ProjectName:     req.ProjectName,
+		StorageFlag:     req.StorageFlag,
 		CreatedAt:       time.Now(), // 设置为当前时间
 		CreatedById:     int64(req.User),
 		JobStatus:       int(entity.JobStatusInit),
@@ -129,8 +133,8 @@ func (s *JobRecordService) CreateJobExecute(params map[string]interface{}) error
 	// 获取 Unix 时间戳
 	beginTimestamp := begin.Unix()
 	endTimestamp := end.Unix()
-	var args = fmt.Sprintf("execute_id=%d\texecute_name=%s\tkey_word=%s\tignore_word=%s\tbegin_time=%d\tend_time=%d\t%s",
-		newExecute.ID, req.ExecuteName, req.KeyWord, req.IgnoreWord, beginTimestamp, endTimestamp, jobMeta.ExeArgs)
+	var args = fmt.Sprintf("execute_id=%d\texecute_name=%s\tkey_word=%s\tignore_word=%s\tproject_name=%s\tstorage_flag=%s\tbegin_time=%d\tend_time=%d\t%s",
+		newExecute.ID, req.ExecuteName, req.KeyWord, req.IgnoreWord, req.ProjectName, req.StorageFlag, beginTimestamp, endTimestamp, jobMeta.ExeArgs)
 	logging.Info("args %s", args)
 	newExecute.ExeArgs = args
 	newExecute.EnvArgs = jobMeta.EnvArgs
