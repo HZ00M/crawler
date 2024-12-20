@@ -60,4 +60,18 @@ class NeonScrapyItem(scrapy.Item):
     book_num = scrapy.Field()
     down_count = scrapy.Field()
     take_time = scrapy.Field()
+    project_name = scrapy.Field()
+    storage_flag = scrapy.Field()
 
+class TapTapScrapyItem(scrapy.Item):
+    user_id = scrapy.Field()  # id
+    author = scrapy.Field()  # 姓名
+    updated_time = scrapy.Field()  # 更新时间
+    device = scrapy.Field()  # 设备
+    review_id = scrapy.Field()  # 评论id
+    score = scrapy.Field()  # 评分
+    contents = scrapy.Field()  # 评论
+    recommend = scrapy.Field()  # 推荐/不推荐
+    not_recommend = scrapy.Field()  # 推荐/不推荐
+    played_spent = scrapy.Field()  # 游戏时间
+    review_url = scrapy.Field()  # 评论地址

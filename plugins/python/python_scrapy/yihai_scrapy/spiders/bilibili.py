@@ -47,7 +47,7 @@ class BilibiliSpider(scrapy.Spider):
     not_req_list = {}
     req_index = 1
 
-    def __init__(self, key_word="", execute_id=0, execute_name="", ignore_word="", begin_time=0, end_time=0, model=0,
+    def __init__(self, key_word="", execute_id=0, execute_name="", ignore_word="", begin_time=0, end_time=0, model=0,project_name="",storage_flag="",
                  *args,
                  **kwargs):
         logging.info(kwargs)
@@ -60,6 +60,10 @@ class BilibiliSpider(scrapy.Spider):
         # super().__init__(**kwargs)
         temp = req_config["cookies"]
         self.cookies = {data.split('=')[0]: data.split('=')[1] for data in temp.split('; ')}
+        # 传过来的参数，不用出来，写数据的时候，写回去传到数据库就行
+        self.project_name = project_name
+        self.storage_flag = storage_flag
+
         self.key_word = key_word
         self.execute_id = int(execute_id)
         self.execute_name = execute_name
