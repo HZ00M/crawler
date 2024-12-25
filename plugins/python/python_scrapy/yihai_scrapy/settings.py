@@ -124,6 +124,7 @@ ITEM_PIPELINES = {
     # "yihai_scrapy.pipelines.NeonScrapyPipeline": 300,
     "yihai_scrapy.pipelines.MysqlPipeline": 301,
     'yihai_scrapy.pipelines.RedisPipeline': 302,
+    # "yihai_scrapy.pipelines.feishuPipeline": 306,
 }
 
 # Enable and configure the AutoThrottle extension (disabled by default)
