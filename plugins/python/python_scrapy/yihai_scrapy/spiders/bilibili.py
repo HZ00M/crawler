@@ -6,6 +6,7 @@ from distutils.command.config import config
 # 解决execjs执行js时产生的乱码报错，需要在导入execjs模块之前，让popen的encoding参数锁定为utf-8
 import subprocess
 from functools import partial
+
 subprocess.Popen = partial(subprocess.Popen, encoding="utf-8")
 import execjs
 
@@ -47,7 +48,8 @@ class BilibiliSpider(scrapy.Spider):
     not_req_list = {}
     req_index = 1
 
-    def __init__(self, key_word="", execute_id=0, execute_name="", ignore_word="", begin_time=0, end_time=0, model=0,project_name="",storage_flag="",
+    def __init__(self, key_word="", execute_id=0, execute_name="", ignore_word="", begin_time=0, end_time=0, model=0,
+                 project_name="", storage_flag="",
                  *args,
                  **kwargs):
         logging.info(kwargs)
@@ -193,24 +195,28 @@ class BilibiliSpider(scrapy.Spider):
             page_video_data = re.findall(r'[window.](__pinia\s*=\s*\(function\([^)]*\)[^)]*\)[^<]*)', video_html_text)
             if page_video_data:
                 # 使用execjs解析函数，得到完整的json数据
-                js_compile = execjs.compile(page_video_data[0])
+                clean_string = page_video_data[0].encode('utf-8', 'ignore').decode('utf-8')
+                clean_string = re.sub(r'[^\x00-\x7F]+', '', clean_string)
+                js_compile = execjs.compile(clean_string)
                 # 转换成字典格式
                 video_json = js_compile.eval("__pinia")
-                page = video_json["searchTypeResponse"]["searchTypeResponse"]["page"] # 当前第几页
-                pagesize = video_json["searchTypeResponse"]["searchTypeResponse"]["pagesize"] # 每一页多少数据
-                numPages = video_json["searchTypeResponse"]["searchTypeResponse"]["numPages"] # 总共多少页
-                numResults = video_json["searchTypeResponse"]["searchTypeResponse"]["numResults"] # 总共搜索到多少视频
+                page = video_json["searchTypeResponse"]["searchTypeResponse"]["page"]  # 当前第几页
+                pagesize = video_json["searchTypeResponse"]["searchTypeResponse"]["pagesize"]  # 每一页多少数据
+                numPages = video_json["searchTypeResponse"]["searchTypeResponse"]["numPages"]  # 总共多少页
+                numResults = video_json["searchTypeResponse"]["searchTypeResponse"]["numResults"]  # 总共搜索到多少视频
                 # 视频列表
                 item_list = video_json["searchTypeResponse"]["searchTypeResponse"]["result"]
                 for item in item_list:
                     video_item = NeonScrapyItem()
-                    video_item['title'] = item["title"].replace("<em class=\"keyword\">","").replace("</em>","") # 视频标题
-                    video_item['record_ur'] = "http://www.bilibili.com/video/" + item["bvid"] # 视频链接
+                    video_item['title'] = item["title"].replace("<em class=\"keyword\">", "").replace("</em>",
+                                                                                                      "")  # 视频标题
+                    video_item['record_ur'] = "http://www.bilibili.com/video/" + item["bvid"]  # 视频链接
+                    logging.warning(f"req_video_url {video_item['record_ur']}")
                     # 当前排序
                     rank_index = item["rank_index"]
                     if rank_index == numResults:
                         # 更新最后一个视频的时间，后面如果要继续遍历，取这个时间戳
-                        self.last_time = item["pubdate"] -1
+                        self.last_time = item["pubdate"] - 1
                     req = scrapy.Request(url=video_item['record_ur'], callback=self.get_video_details,
                                          meta={'video_item': video_item, "rank_index": rank_index,
                                                "req_index": BilibiliSpider.req_index},
@@ -223,9 +229,9 @@ class BilibiliSpider(scrapy.Spider):
                 if page < numPages:
                     logging.info(f"now_page:{page},max_page:{numPages}, 继续下一页")
                     url_info["url"] = url_config["video"]["init_page"].format(keyword=self.key_word,
-                                                            page=page+1, num=pagesize*page,
-                                                            begin_time=self.start_time,
-                                                            end_time=self.end_time) + "&order=pubdate"
+                                                                              page=page + 1, num=pagesize * page,
+                                                                              begin_time=self.start_time,
+                                                                              end_time=self.end_time) + "&order=pubdate"
 
                     req = scrapy.Request(url=url_info["url"],
                                          callback=self.parse,
@@ -234,7 +240,7 @@ class BilibiliSpider(scrapy.Spider):
                     BilibiliSpider.req_index += 1
                     yield req
                 # 如果视频超过1000
-                elif page == numPages and numResults==1000:
+                elif page == numPages and numResults == 1000:
                     logging.info(f"搜索视频超过1000条，修改时间戳范围，继续搜索，last_time:{self.last_time}")
                     url_info["url"] = url_config["video"]["init_page"].format(keyword=self.key_word,
                                                                               page=1, num=0,
@@ -410,15 +416,15 @@ class BilibiliSpider(scrapy.Spider):
             try:
                 video_json = json.loads(video_html_json[0])
                 stat = video_json["videoData"]["stat"]
-                video_item['target_obj_id'] = stat["aid"] # 分析对象id，依赖它去拿评论
+                video_item['target_obj_id'] = stat["aid"]  # 分析对象id，依赖它去拿评论
                 oid = video_item['target_obj_id']
-                video_item['comments_count'] = stat["reply"] # 评论数量
-                video_item['read_count'] = stat["view"] # 视频播放量
-                video_item['barrage_count'] = stat["danmaku"] # 弹幕数
-                video_item['like_count'] = stat["like"] # 点赞数量
-                video_item['coin_count'] = stat["coin"] # 投币数量
-                video_item['mark_count'] = stat["favorite"] # 收藏数量
-                video_item['share_count'] = stat["share"] # 转发数量
+                video_item['comments_count'] = stat["reply"]  # 评论数量
+                video_item['read_count'] = stat["view"]  # 视频播放量
+                video_item['barrage_count'] = stat["danmaku"]  # 弹幕数
+                video_item['like_count'] = stat["like"]  # 点赞数量
+                video_item['coin_count'] = stat["coin"]  # 投币数量
+                video_item['mark_count'] = stat["favorite"]  # 收藏数量
+                video_item['share_count'] = stat["share"]  # 转发数量
                 video_item["active_count"] = 0
                 self.get_active_count(video_item)
                 yield self.send_user_card(video_item)
@@ -630,7 +636,7 @@ class BilibiliSpider(scrapy.Spider):
         item = response.meta["item"]
         resp_json = json.loads(response.body)
         if resp_json["code"] != 0:
-            logging.info("get user card error")
+            logging.info(f"get user card error, return {resp_json}")
             return
         data = resp_json["data"]
         # 用户等级
@@ -653,7 +659,7 @@ class BilibiliSpider(scrapy.Spider):
     def get_sub_video_comment(self, response):
         resp_json = json.loads(response.body)
         if resp_json["code"] != 0:
-            logging.info("get user card error")
+            logging.info(f"get user card error, return {resp_json}")
             return
         data = resp_json["data"]
         if data["replies"]:
@@ -1229,8 +1235,10 @@ class BilibiliSpider(scrapy.Spider):
         if user_id not in self.bilibili_user_dicts or json.loads(self.bilibili_user_dicts[user_id])[
             "save_time"] < now_time - 86400 * 30:
             url = f"https://api.bilibili.com/x/web-interface/card?mid={item['user_id']}&photo=true&web_location=333.788"
+            headers = {"referer": None}
             req = scrapy.Request(url=url, callback=self.get_user_card,
                                  meta={'item': item, "req_index": BilibiliSpider.req_index},
+                                 headers=headers,
                                  dont_filter=True)
             BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
             BilibiliSpider.req_index += 1
