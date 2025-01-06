@@ -73,12 +73,14 @@ func (s *JobRecordService) CreateJobExecute(params map[string]interface{}) error
 		User        int    `json:"user_id"`
 		ParallelNum int    `json:"parallel_num"`
 		ProjectName string `json:"project_name"`
-		StorageFlag int    `json:"storage_flag"`
+		StorageFlag string `json:"storage_flag"`
 	}
 	// 将 map 转换为 JSON 字符串
 	jsonData, err := json.Marshal(params)
 	if err != nil {
 		panic(fmt.Sprintf("Error marshalling map: %v", err))
+	} else {
+		logging.Info("CreateJobExecute jsonData: %s", jsonData)
 	}
 
 	// 将 JSON 字符串解析为结构体
@@ -90,6 +92,10 @@ func (s *JobRecordService) CreateJobExecute(params map[string]interface{}) error
 	jobTypeInt, err := strconv.Atoi(req.JobType)
 	if err != nil {
 		panic(fmt.Sprintf("Error strconv.Atoi(req.JobType) error %v: %v", req.JobType, err))
+	}
+	storageFlag, err := strconv.Atoi(req.StorageFlag)
+	if err != nil {
+		panic(fmt.Sprintf("Error strconv.Atoi(req.StorageFlag) error %v: %v", req.JobType, err))
 	}
 	jobMeta, err = s.repo.GetJobMeta(req.MetaId)
 	if err != nil || jobMeta == nil {
@@ -112,7 +118,7 @@ func (s *JobRecordService) CreateJobExecute(params map[string]interface{}) error
 		JobType:         jobTypeInt,
 		ParallelNum:     req.ParallelNum,
 		ProjectName:     req.ProjectName,
-		StorageFlag:     req.StorageFlag,
+		StorageFlag:     storageFlag,
 		CreatedAt:       time.Now(), // 设置为当前时间
 		CreatedById:     int64(req.User),
 		JobStatus:       int(entity.JobStatusInit),

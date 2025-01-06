@@ -53,6 +53,8 @@ type JobRecord struct {
 	downloads         string
 	BookNum           int
 	DownCount         int
+	ProjectName       string `gorm:"type:varchar(255)"`
+	StorageFlag       int
 }
 
 func (JobRecord) TableName() string {
