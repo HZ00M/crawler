@@ -59,6 +59,8 @@ type JobExecute struct {
 	BeginTime       time.Time
 	EndTime         time.Time
 	ExecuteName     string `gorm:"type:varchar(255)" json:"execute_name"`
+	ProjectName     string `gorm:"type:varchar(255)"`
+	StorageFlag     int
 	AppLabelName    string `gorm:"type:varchar(255)"`
 	JobLabelName    string `gorm:"type:varchar(255)"`
 	Namespace       string `gorm:"type:varchar(255)"`

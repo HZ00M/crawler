@@ -72,11 +72,15 @@ func (s *JobRecordService) CreateJobExecute(params map[string]interface{}) error
 		EndTime     string `json:"end_time"`
 		User        int    `json:"user_id"`
 		ParallelNum int    `json:"parallel_num"`
+		ProjectName string `json:"project_name"`
+		StorageFlag string `json:"storage_flag"`
 	}
 	// 将 map 转换为 JSON 字符串
 	jsonData, err := json.Marshal(params)
 	if err != nil {
 		panic(fmt.Sprintf("Error marshalling map: %v", err))
+	} else {
+		logging.Info("CreateJobExecute jsonData: %s", jsonData)
 	}
 
 	// 将 JSON 字符串解析为结构体
@@ -88,6 +92,10 @@ func (s *JobRecordService) CreateJobExecute(params map[string]interface{}) error
 	jobTypeInt, err := strconv.Atoi(req.JobType)
 	if err != nil {
 		panic(fmt.Sprintf("Error strconv.Atoi(req.JobType) error %v: %v", req.JobType, err))
+	}
+	storageFlag, err := strconv.Atoi(req.StorageFlag)
+	if err != nil {
+		panic(fmt.Sprintf("Error strconv.Atoi(req.StorageFlag) error %v: %v", req.JobType, err))
 	}
 	jobMeta, err = s.repo.GetJobMeta(req.MetaId)
 	if err != nil || jobMeta == nil {
@@ -109,6 +117,8 @@ func (s *JobRecordService) CreateJobExecute(params map[string]interface{}) error
 		ResultTableName: entity.RecordTableName, // 根据需要设定，或者从参数中获取
 		JobType:         jobTypeInt,
 		ParallelNum:     req.ParallelNum,
+		ProjectName:     req.ProjectName,
+		StorageFlag:     storageFlag,
 		CreatedAt:       time.Now(), // 设置为当前时间
 		CreatedById:     int64(req.User),
 		JobStatus:       int(entity.JobStatusInit),
@@ -129,8 +139,8 @@ func (s *JobRecordService) CreateJobExecute(params map[string]interface{}) error
 	// 获取 Unix 时间戳
 	beginTimestamp := begin.Unix()
 	endTimestamp := end.Unix()
-	var args = fmt.Sprintf("execute_id=%d\texecute_name=%s\tkey_word=%s\tignore_word=%s\tbegin_time=%d\tend_time=%d\t%s",
-		newExecute.ID, req.ExecuteName, req.KeyWord, req.IgnoreWord, beginTimestamp, endTimestamp, jobMeta.ExeArgs)
+	var args = fmt.Sprintf("execute_id=%d\texecute_name=%s\tkey_word=%s\tignore_word=%s\tproject_name=%s\tstorage_flag=%s\tbegin_time=%d\tend_time=%d\t%s",
+		newExecute.ID, req.ExecuteName, req.KeyWord, req.IgnoreWord, req.ProjectName, req.StorageFlag, beginTimestamp, endTimestamp, jobMeta.ExeArgs)
 	logging.Info("args %s", args)
 	newExecute.ExeArgs = args
 	newExecute.EnvArgs = jobMeta.EnvArgs
