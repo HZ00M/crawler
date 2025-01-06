@@ -6,12 +6,10 @@ from distutils.command.config import config
 # 解决execjs执行js时产生的乱码报错，需要在导入execjs模块之前，让popen的encoding参数锁定为utf-8
 import subprocess
 from functools import partial
-
 subprocess.Popen = partial(subprocess.Popen, encoding="utf-8")
 import execjs
 
 import scrapy
-
 from yihai_scrapy import Util
 # from yihai_scrapy.items import NeonScrapyCommentItem
 from yihai_scrapy.items import NeonScrapyItem
@@ -20,6 +18,7 @@ from yihai_scrapy.config import scrapy_config
 from yihai_scrapy.config import req_config
 from yihai_scrapy.config import url_config
 from yihai_scrapy.config import redis_config
+from yihai_scrapy.cookies import ScrapyCookies
 from datetime import datetime
 import logging
 import redis
@@ -60,7 +59,10 @@ class BilibiliSpider(scrapy.Spider):
                                        decode_responses=redis_config["decode_responses"])
         self.bilibili_user_dicts = self.redis.hgetall(redis_config["bilibili"])
         # super().__init__(**kwargs)
+        sc = ScrapyCookies("bilibili")
+        sc.update_config_cookies()
         temp = req_config["cookies"]
+        logging.info(f"game_cookies:{temp}")
         self.cookies = {data.split('=')[0]: data.split('=')[1] for data in temp.split('; ')}
         # 传过来的参数，不用出来，写数据的时候，写回去传到数据库就行
         self.project_name = project_name
