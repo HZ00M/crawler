@@ -415,8 +415,8 @@ class BilibiliSpider(scrapy.Spider):
                 video_item['share_count'] = stat["share"]  # 转发数量
                 video_item["active_count"] = 0
                 self.get_active_count(video_item)
-                yield video_item
-                # yield self.send_user_card(video_item)
+                # yield video_item
+                yield self.send_user_card(video_item)
             except Exception as e:
                 logging.error(e)
                 logging.info(f"获取互动数据失败，req.url:{response.url}")
@@ -1221,7 +1221,6 @@ class BilibiliSpider(scrapy.Spider):
         return item
 
     def send_user_card(self, item):
-        # return item
         now_time = int(time.time())
         user_id = str(item['user_id'])
         if user_id not in self.bilibili_user_dicts or json.loads(self.bilibili_user_dicts[user_id])[
