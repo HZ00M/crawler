@@ -39,7 +39,7 @@ def main():
             setting_command += f" -s {run_type}"
             config_list_a.remove(run_type)
     # 更新cookies
-    sc.update_config_cookies()
+    # sc.update_config_cookies()
     # script_command += config_list[0]
     # config_list.pop(0)
     for config in config_list_a:
