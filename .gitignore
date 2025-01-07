@@ -5,3 +5,5 @@ runtime/*
 !runtime/qrcode/bg.jpg
 !runtime/fonts
 venv/
+/plugins/go/myColly/runtime/logs/*
+/plugins/go/myColly/vendor/*

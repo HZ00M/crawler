@@ -1,5 +1,5 @@
 # 使用 debian:buster-slim 作为基础镜像
-FROM default.registry.tke-syyx.com/syyx-tpf/scrapy-python:1.0
+FROM default.registry.tke-syyx.com/syyx-tpf/scrapy-python:1.1
 
 # 设置工作目录
 WORKDIR /app
