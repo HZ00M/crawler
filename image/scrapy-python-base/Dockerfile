@@ -9,6 +9,7 @@ COPY sources.list /etc/apt/sources.list
 
 # 安装构建 Python 所需的依赖
 RUN apt-get update && apt-get install -y \
+    tzdata\
     iptables \
     iputils-ping \
     telnet\
@@ -36,7 +37,7 @@ RUN apt-get update && apt-get install -y \
 RUN apt-get update && apt-get install -y tzdata && \
     ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && \
     echo "Asia/Shanghai" > /etc/timezone && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
+    rm -rf /var/lib/apt/lists/*
 
 # 验证时间
 RUN date
