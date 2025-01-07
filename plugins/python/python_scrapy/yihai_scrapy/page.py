@@ -6,7 +6,8 @@ class bilibiliPage:
     # 视频列表
     video_list = '//div[@id="i_cecream"]//div[@class="video-list row"]/div'
     # 视频标题(相对视频列表单个视频的定位)
-    video_title = './/h3[@class="bili-video-card__info--tit"]/@title'
+    # video_title = './/h3[@class="bili-video-card__info--tit"]/@title'
+    video_title = '//*[@id="viewbox_report"]/div[1]/div/h1/text()'
     # 视频详情地址(相对视频列表单个视频的定位)
     video_details = './div/div[2]/a/@href'
 

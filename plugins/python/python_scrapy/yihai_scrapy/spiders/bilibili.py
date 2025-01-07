@@ -6,6 +6,9 @@ from distutils.command.config import config
 # 解决execjs执行js时产生的乱码报错，需要在导入execjs模块之前，让popen的encoding参数锁定为utf-8
 import subprocess
 from functools import partial
+
+from twisted.python.compat import items
+
 subprocess.Popen = partial(subprocess.Popen, encoding="utf-8")
 import execjs
 
@@ -202,6 +205,7 @@ class BilibiliSpider(scrapy.Spider):
                 js_compile = execjs.compile(clean_string)
                 # 转换成字典格式
                 video_json = js_compile.eval("__pinia")
+
                 page = video_json["searchTypeResponse"]["searchTypeResponse"]["page"]  # 当前第几页
                 pagesize = video_json["searchTypeResponse"]["searchTypeResponse"]["pagesize"]  # 每一页多少数据
                 numPages = video_json["searchTypeResponse"]["searchTypeResponse"]["numPages"]  # 总共多少页
@@ -209,10 +213,12 @@ class BilibiliSpider(scrapy.Spider):
                 # 视频列表
                 item_list = video_json["searchTypeResponse"]["searchTypeResponse"]["result"]
                 for item in item_list:
+                    logging.info(f"video_json: {item}")
                     video_item = NeonScrapyItem()
-                    video_item['title'] = item["title"].replace("<em class=\"keyword\">", "").replace("</em>",
-                                                                                                      "")  # 视频标题
-                    video_item['record_ur'] = "http://www.bilibili.com/video/" + item["bvid"]  # 视频链接
+                    # 这里获取的不一定准
+                    # video_item['title'] = item["title"].replace("<em class=\"keyword\">", "").replace("</em>",
+                    #                                                                                   "")  # 视频标题
+                    video_item['record_ur'] = "https://www.bilibili.com/video/" + item["bvid"] + "/"  # 视频链接
                     logging.warning(f"req_video_url {video_item['record_ur']}")
                     # 当前排序
                     rank_index = item["rank_index"]
@@ -258,27 +264,6 @@ class BilibiliSpider(scrapy.Spider):
             else:
                 logging.error(f"视频主界面，未成功提取到数据，url:{url_info['url']}")
 
-            # logging.info(type(item_lists))
-            # if item_lists:
-            #     item_list = []
-            #     for item in item_lists:
-            #         video_item = NeonScrapyItem()
-            #         video_item['title'] = item.xpath(Page.video_title).extract_first()
-            #         video_item['record_ur'] = "https:" + item.xpath(Page.video_details).extract_first()
-            #         item_list.append(video_item)
-            #     for item in range(len(item_list)):
-            #         req = scrapy.Request(url=item_list[item]['record_ur'], callback=self.get_video_details,
-            #                              meta={'video_item': item_list[item], "item_list": len(item_list),
-            #                                    "item_index": item + 1,
-            #                                    'url_info': json.dumps(url_info), "req_index": BilibiliSpider.req_index},
-            #                              # req_config=self.req_config,
-            #                              dont_filter=True)
-            #         BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
-            #         BilibiliSpider.req_index += 1
-            #         yield req
-            #
-            # else:
-            #     logging.info("未定位到视频主页面信息")
         # 专栏的
         elif url_type == "article":
             # 获取专栏主页的
@@ -375,6 +360,7 @@ class BilibiliSpider(scrapy.Spider):
         # item_index = response.meta["item_index"]
         # url_info = json.loads(response.meta["url_info"])
         video_item['data_type'] = "视频"
+        video_item['title'] = response.xpath(Page.video_title).extract_first()
         # 视频发布时间
         video_item['msg_time'] = response.xpath(Page.posted_time).extract_first()
         # 如果没有下一页，则去拿
@@ -429,7 +415,8 @@ class BilibiliSpider(scrapy.Spider):
                 video_item['share_count'] = stat["share"]  # 转发数量
                 video_item["active_count"] = 0
                 self.get_active_count(video_item)
-                yield self.send_user_card(video_item)
+                yield video_item
+                # yield self.send_user_card(video_item)
             except Exception as e:
                 logging.error(e)
                 logging.info(f"获取互动数据失败，req.url:{response.url}")
@@ -504,6 +491,7 @@ class BilibiliSpider(scrapy.Spider):
                         ]
                         url = "https://api.bilibili.com/x/v2/reply/reply?" + "&".join(temp)
                         logging.info("开始抓子评论下一页")
+
                         req = scrapy.Request(url=url, callback=self.get_sub_video_comment,
                                              meta={"oid": response.meta['oid'], "req_index": BilibiliSpider.req_index},
                                              cookies=self.cookies,
@@ -615,7 +603,8 @@ class BilibiliSpider(scrapy.Spider):
         # 评论人mid
         comment_item["user_id"] = comment["member"]["mid"]
         logging.info("去拿用户信息")
-        return self.send_user_card(comment_item)
+        return comment_item
+        # return self.send_user_card(comment_item)
         # now_time = int(time.time())
         # user_id = str(comment_item['user_id'])
         # if user_id not in self.bilibili_user_dicts or eval(self.bilibili_user_dicts[user_id])[
@@ -661,7 +650,7 @@ class BilibiliSpider(scrapy.Spider):
     def get_sub_video_comment(self, response):
         resp_json = json.loads(response.body)
         if resp_json["code"] != 0:
-            logging.info(f"get user card error, return {resp_json}")
+            logging.info(f"get sub video error, return {resp_json}")
             return
         data = resp_json["data"]
         if data["replies"]:
@@ -1232,6 +1221,7 @@ class BilibiliSpider(scrapy.Spider):
         return item
 
     def send_user_card(self, item):
+        # return item
         now_time = int(time.time())
         user_id = str(item['user_id'])
         if user_id not in self.bilibili_user_dicts or json.loads(self.bilibili_user_dicts[user_id])[
