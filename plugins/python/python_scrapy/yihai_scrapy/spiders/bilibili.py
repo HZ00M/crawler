@@ -62,8 +62,8 @@ class BilibiliSpider(scrapy.Spider):
                                        decode_responses=redis_config["decode_responses"])
         self.bilibili_user_dicts = self.redis.hgetall(redis_config["bilibili"])
         # super().__init__(**kwargs)
-        sc = ScrapyCookies("bilibili")
-        sc.update_config_cookies()
+        # sc = ScrapyCookies("bilibili")
+        # sc.update_config_cookies()
         temp = req_config["cookies"]
         logging.info(f"game_cookies:{temp}")
         self.cookies = {data.split('=')[0]: data.split('=')[1] for data in temp.split('; ')}
@@ -74,6 +74,7 @@ class BilibiliSpider(scrapy.Spider):
         self.key_word = key_word
         self.execute_id = int(execute_id)
         self.execute_name = execute_name
+        # 屏蔽字
         self.ignore_word = ignore_word.split(';') if ignore_word else []
         self.model = int(model)
         # 正常运行
@@ -363,23 +364,6 @@ class BilibiliSpider(scrapy.Spider):
         video_item['title'] = response.xpath(Page.video_title).extract_first()
         # 视频发布时间
         video_item['msg_time'] = response.xpath(Page.posted_time).extract_first()
-        # 如果没有下一页，则去拿
-        # if item_list <= item_index:
-        #     logging.info("next page")
-        #     url_info["url"] = url_info["url"].replace(f"page={url_info['page']}",
-        #                                               f"page={url_info['page'] + 1}").replace(f"&o={url_info['num']}",
-        #                                                                                       f"&o={url_info['num'] + item_list}")
-        #     url_info['page'] += 1
-        #     url_info["num"] += item_list
-        #     req = scrapy.Request(url=url_info["url"],
-        #                          callback=self.parse,
-        #                          meta={'url_info': json.dumps(url_info),
-        #                                "req_index": BilibiliSpider.req_index},
-        #                          # req_config=self.req_config
-        #                          )
-        #     BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
-        #     BilibiliSpider.req_index += 1
-        #     yield req
         # 判断是否有屏蔽字，有屏蔽字的视频不处理
         for ignore in self.ignore_word:
             if ignore in video_item["title"]:
@@ -415,8 +399,8 @@ class BilibiliSpider(scrapy.Spider):
                 video_item['share_count'] = stat["share"]  # 转发数量
                 video_item["active_count"] = 0
                 self.get_active_count(video_item)
-                # yield video_item
-                yield self.send_user_card(video_item)
+                yield video_item
+                # yield self.send_user_card(video_item)
             except Exception as e:
                 logging.error(e)
                 logging.info(f"获取互动数据失败，req.url:{response.url}")
@@ -860,6 +844,7 @@ class BilibiliSpider(scrapy.Spider):
                     f"发布时间：{dynamic_item['msg_time']} out of range start_time:{self.start_time},end_time:{self.end_time}")
                 return
             yield self.send_user_card(dynamic_item)
+            # yield dynamic_item
             # now_time = int(time.time())
             # user_id = str(dynamic_item['user_id'])
             # if user_id not in self.bilibili_user_dicts or eval(self.bilibili_user_dicts[user_id])[
@@ -901,6 +886,7 @@ class BilibiliSpider(scrapy.Spider):
             BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
             BilibiliSpider.req_index += 1
             yield req
+
         if "offset" in resp_json["data"]:
             logging.info("开始下一页")
             offset = resp_json["data"]["offset"]
@@ -908,7 +894,7 @@ class BilibiliSpider(scrapy.Spider):
             headers = {"referer": None}
             req = scrapy.Request(url=url_info["url"],
                                  callback=self.get_dynamic_init_page,
-                                 meta={'url_info': json.dumps(url_info), "randomProxy": True,
+                                 meta={'url_info': json.dumps(url_info), "randomProxy": False,
                                        "req_index": BilibiliSpider.req_index},
                                  cookies=self.cookies,
                                  dont_filter=True,
@@ -932,7 +918,11 @@ class BilibiliSpider(scrapy.Spider):
         # 动态标题,根据动态类型，从不同路径下拿标题
         # todo 这里可能会报错，有问题后面再优化，规则有点绕
         # 标题和正文内容
-        if dynamic_info["modules"]["module_dynamic"]["major"]:
+
+        if dynamic_info["modules"]["module_dynamic"]["desc"]:
+            dynamic_item["content"] = dynamic_info["modules"]["module_dynamic"]["desc"]["text"]
+            dynamic_item["title"] = ""
+        elif dynamic_info["modules"]["module_dynamic"]["major"]:
             if "archive" in dynamic_info["modules"]["module_dynamic"]["major"]:
                 dynamic_item["title"] = dynamic_info["modules"]["module_dynamic"]["major"]["archive"]["title"]
                 dynamic_item["content"] = dynamic_info["modules"]["module_dynamic"]["major"]["archive"]["desc"]
@@ -940,14 +930,12 @@ class BilibiliSpider(scrapy.Spider):
                 dynamic_item["title"] = dynamic_info["modules"]["module_dynamic"]["major"]["article"]["title"]
                 dynamic_item["content"] = dynamic_info["modules"]["module_dynamic"]["major"]["article"]["desc"]
             elif "opus" in dynamic_info["modules"]["module_dynamic"]["major"]:
+                print( dynamic_info["modules"]["module_dynamic"]["major"]["opus"])
                 dynamic_item["title"] = dynamic_info["modules"]["module_dynamic"]["major"]["opus"]["title"]
                 dynamic_item["content"] = dynamic_info["modules"]["module_dynamic"]["major"]["opus"]["summary"]["desc"]
             else:
                 dynamic_item["title"] = ""
                 dynamic_item["content"] = ""
-        elif dynamic_info["modules"]["module_dynamic"]["desc"]:
-            dynamic_item["content"] = dynamic_info["modules"]["module_dynamic"]["desc"]["text"]
-            dynamic_item["title"] = ""
         else:
             dynamic_item["content"] = ""
             dynamic_item["title"] = ""
@@ -1226,10 +1214,10 @@ class BilibiliSpider(scrapy.Spider):
         if user_id not in self.bilibili_user_dicts or json.loads(self.bilibili_user_dicts[user_id])[
             "save_time"] < now_time - 86400 * 30:
             url = f"https://api.bilibili.com/x/web-interface/card?mid={item['user_id']}&photo=true&web_location=333.788"
-            headers = {"referer": None}
+            # headers = {"referer": None}
             req = scrapy.Request(url=url, callback=self.get_user_card,
                                  meta={'item': item, "req_index": BilibiliSpider.req_index},
-                                 headers=headers,
+                                 # headers=headers,
                                  dont_filter=True)
             BilibiliSpider.not_req_list[BilibiliSpider.req_index] = req
             BilibiliSpider.req_index += 1
