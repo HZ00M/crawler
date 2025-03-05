@@ -6,16 +6,12 @@ stages:
 
 build:
   stage: build
-  image: golang:1.22.5
-  services: 
-    - $CI_REGISTRY/docker:20.10-dind
+#  image: golang:1.22.5
   script:
+    - echo "build start ..."
     - go version
     - go mod tidy
     - go build -v ./...
-    - echo "Pushing Docker image to registry..."
-    - docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
-    - docker push $CI_REGISTRY/crawler:$CI_COMMIT_SHA
   only:
     - master
 test:
@@ -30,7 +26,11 @@ dockerize:
   before_script:
     - docker info
   script:
+    - echo "dockerize start ..."
     - docker build -t crawler:latest $CI_REGISTRY/crawler:$CI_COMMIT_SHA .
+    - echo "Pushing Docker image to registry..."
+    - docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
+    - docker push $CI_REGISTRY/crawler:$CI_COMMIT_SHA
   only:
     - master
 
