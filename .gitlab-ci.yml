@@ -1,0 +1,48 @@
+stages:
+  - build
+  - test
+  - dockerize
+  - deploy
+
+build:
+  stage: build
+  image: golang:1.22.5
+  services: 
+    - $CI_REGISTRY/docker:20.10-dind
+  script:
+    - go version
+    - go mod tidy
+    - go build -v ./...
+    - echo "Pushing Docker image to registry..."
+    - docker login -u $DOCKER_USERNAME -p $DOCKER_PASSWORD
+    - docker push $CI_REGISTRY/crawler:$CI_COMMIT_SHA
+  only:
+    - master
+test:
+  stage: test
+  image: golang:1.22.5
+  script:
+    - go test -v./...
+
+dockerize:
+  stage: dockerize
+  image: $CI_REGISTRY/docker:20.10-dind
+  before_script:
+    - docker info
+  script:
+    - docker build -t crawler:latest $CI_REGISTRY/crawler:$CI_COMMIT_SHA .
+  only:
+    - master
+
+deploy:
+  stage: deploy
+  image: dtzar/helm-kubectl:3.8.0  # 包含 kubectl 和 helm 的镜像
+  script:
+    - echo $KUBE_CONFIG | base64 -d > kubeconfig  # 假设 KUBE_CONFIG 是 base64 编码的 kubeconfig 文件
+    - export KUBECONFIG=kubeconfig
+    - kubectl set image deployment/crawler-deployment crawler=$CI_REGISTRY/crawler:$CI_COMMIT_SHA -n crawler-platform-ehijoy  # 更新部署的镜像
+  only:
+    - main
+  environment:
+    name: production
+    url: http://10.100.16.116/  # 替换为实际的生产环境 URL
