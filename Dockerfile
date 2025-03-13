@@ -40,7 +40,7 @@ FROM default.registry.tke-syyx.com/syyx-tpf/docker:20.10-dind
 RUN echo "" > /etc/apk/repositories && \
     echo "https://mirrors.aliyun.com/alpine/v3.18/main" >> /etc/apk/repositories && \
     echo "https://mirrors.aliyun.com/alpine/v3.18/community" >> /etc/apk/repositories
-RUN apk update && apk add --no-cache ca-certificates busybox-extras curl
+RUN apk update && apk add --no-cache ca-certificates busybox-extras curl git
 
 # 设置工作目录
 WORKDIR /app

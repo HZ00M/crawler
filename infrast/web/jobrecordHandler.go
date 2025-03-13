@@ -19,7 +19,7 @@ import (
 )
 
 func init() {
-	err := di.GetContianer().Provide(func(gormDB *gorm.DB, service *service.JobRecordService) GinRoute {
+	err := di.GetContianer().Provide(func(gormDB *gorm.DB, service service.IJobRecordService) GinRoute {
 		return NewJobRecordHandler(gormDB, service)
 	}, dig.Group("route"))
 	// err := di.GetContianer().Provide(func() GinRoute {
@@ -32,12 +32,12 @@ func init() {
 
 type JobRecordHandler struct {
 	dig.Out
-	service  *service.JobRecordService
+	service  service.IJobRecordService
 	gorm     *gorm.DB
 	GinRoute GinRoute `group:"route"`
 }
 
-func NewJobRecordHandler(gormDB *gorm.DB, service *service.JobRecordService) GinRoute {
+func NewJobRecordHandler(gormDB *gorm.DB, service service.IJobRecordService) GinRoute {
 	return &JobRecordHandler{
 		service: service,
 		gorm:    gormDB,

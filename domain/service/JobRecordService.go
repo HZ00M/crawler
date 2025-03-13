@@ -28,6 +28,20 @@ var (
 	once    sync.Once
 )
 
+type IJobRecordService interface {
+	// 定义接口方法
+	CreateJobExecute(params map[string]interface{}) error
+	GetJobRecords(offset int, pageSize int, conditions interface{}) ([]*entity.JobRecord, error)
+	GetJobRecordById(id int) (*entity.JobRecord, error)
+	EditJobRecord(id int, jobrecord *entity.JobRecord) error
+	AddJobRecord(jobrecord *entity.JobRecord) (*entity.JobRecord, error)
+	DeleteJobRecord(id int) error
+	GetJobMetaById(id int) (*entity.JobMeta, error)
+	DoExecuteJob(id int) error
+	StopExecuteJob(id int) error
+	DeleteExecuteJob(id int) error
+	// 其他方法...
+}
 type JobRecordService struct {
 	repo repository.JobRecordRepository
 }
@@ -37,7 +51,7 @@ var (
 )
 
 func init() {
-	err := di.GetContianer().Provide(func(repo repository.JobRecordRepository) *JobRecordService {
+	err := di.GetContianer().Provide(func(repo repository.JobRecordRepository) IJobRecordService {
 		return GetJobRecordService(repo)
 	})
 	if err != nil {
@@ -78,7 +92,7 @@ func (s *JobRecordService) CreateJobExecute(params map[string]interface{}) error
 	// 将 map 转换为 JSON 字符串
 	jsonData, err := json.Marshal(params)
 	if err != nil {
-		panic(fmt.Sprintf("Error marshalling map: %v", err))
+		return fmt.Errorf("Error marshalling map: %v", err)
 	} else {
 		logging.Info("CreateJobExecute jsonData: %s", jsonData)
 	}
@@ -86,20 +100,20 @@ func (s *JobRecordService) CreateJobExecute(params map[string]interface{}) error
 	// 将 JSON 字符串解析为结构体
 	err = json.Unmarshal(jsonData, &req)
 	if err != nil {
-		panic(fmt.Sprintf("Error unmarshalling json: %v", err))
+		return fmt.Errorf("Error unmarshalling json: %v", err)
 	}
 	var jobMeta *entity.JobMeta
 	jobTypeInt, err := strconv.Atoi(req.JobType)
 	if err != nil {
-		panic(fmt.Sprintf("Error strconv.Atoi(req.JobType) error %v: %v", req.JobType, err))
+		fmt.Errorf("Error strconv.Atoi(req.JobType) error %v: %v", req.JobType, err)
 	}
 	storageFlag, err := strconv.Atoi(req.StorageFlag)
 	if err != nil {
-		panic(fmt.Sprintf("Error strconv.Atoi(req.StorageFlag) error %v: %v", req.JobType, err))
+		fmt.Errorf("Error strconv.Atoi(req.StorageFlag) error %v: %v", req.JobType, err)
 	}
 	jobMeta, err = s.repo.GetJobMeta(req.MetaId)
 	if err != nil || jobMeta == nil {
-		panic(fmt.Sprintf("Error GetJobMeta error %v: %v", req.MetaId, err))
+		fmt.Errorf("Error GetJobMeta error %v: %v", req.MetaId, err)
 	}
 	// 解析时间字符串
 	begin, err := time.Parse(time.RFC3339, req.BeginTime)
@@ -134,7 +148,7 @@ func (s *JobRecordService) CreateJobExecute(params map[string]interface{}) error
 	}
 
 	if err := s.repo.AddJobExecute(newExecute); err != nil {
-		panic(fmt.Sprintf("Error AddJobExecute fail id %v: %v", req.MetaId, err))
+		fmt.Errorf("Error AddJobExecute fail id %v: %v", req.MetaId, err)
 	}
 	// 获取 Unix 时间戳
 	beginTimestamp := begin.Unix()
@@ -145,7 +159,7 @@ func (s *JobRecordService) CreateJobExecute(params map[string]interface{}) error
 	newExecute.ExeArgs = args
 	newExecute.EnvArgs = jobMeta.EnvArgs
 	if err := s.repo.EditJobExecute(newExecute); err != nil {
-		panic(fmt.Sprintf("Error EditJobExecute fail id %v: %v", req.MetaId, err))
+		fmt.Errorf("Error EditJobExecute fail id %v: %v", req.MetaId, err)
 	}
 	return nil
 }
