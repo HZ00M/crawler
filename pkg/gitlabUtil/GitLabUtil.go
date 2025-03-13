@@ -61,6 +61,7 @@ func Pull(repoPath, token string) error {
 	}
 	cmd := exec.Command("git", "pull")
 	cmd.Dir = absPath
+	log.Printf("Executing git Pull command: %v", cmd.Args)
 	// 执行命令
 	if err := cmd.Run(); err != nil {
 		log.Printf("Pull repository fail repoPath %s err %v", repoPath, err)

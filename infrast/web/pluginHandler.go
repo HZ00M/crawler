@@ -99,9 +99,20 @@ func (handler *PluginHandler) PushImage(ctx *gin.Context) {
 		return
 	}
 	if metaRecord, err = handler.service.GetJobMetaById(metaId); err != nil {
+		log.Printf("GetJobMetaById failed metaId %s err %v", metaId, err)
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	dockerutil.PushDockerImage(metaRecord.ImageName)
+	if _, err = dockerutil.BuildDockerImage(metaRecord.Language, metaRecord.PluginPath, metaRecord.ImageName); err != nil {
+		log.Printf("BuildImage failed metaId %s metaRecord %v err %v", metaId, metaRecord, err)
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	if err = dockerutil.PushDockerImage(metaRecord.ImageName); err != nil {
+		log.Printf("PushImage failed metaId %s metaRecord %v err %v", metaId, metaRecord, err)
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+	log.Printf("PushImage succeeded metaId %s metaRecord %v", metaId, metaRecord)
 	ctx.JSON(http.StatusOK, "")
 }
